@@ -11,8 +11,8 @@ Artificial Intelligence, governance, risk, data protection, and
 financial-sector regulation.
 
 The application collects publications from regulatory and institutional
-sources and stores normalized information for future classification,
-analysis, and monitoring.
+sources, stores normalized information, and calculates an auditable
+regulatory relevance score.
 
 ### Objective
 
@@ -22,7 +22,8 @@ The project aims to:
 - identify content related to Artificial Intelligence;
 - organize publications from multiple regulatory sources;
 - prevent duplicate records;
-- support future relevance and impact analysis;
+- calculate regulatory relevance scores;
+- support future impact analysis with Artificial Intelligence;
 - provide structured data for dashboards and automated reports.
 
 ### Current capabilities
@@ -34,7 +35,11 @@ The project aims to:
 - Local persistence with SQLite
 - Database mapping and queries with SQLAlchemy
 - Duplicate prevention based on article URLs
-- Script for listing stored articles
+- Deterministic regulatory relevance scoring
+- Keyword and category evidence for every score
+- Ranking from highest to lowest relevance
+- Persistence and updating of article analyses
+- Automated unit tests for the scoring rules
 
 ### Planned sources
 
@@ -51,7 +56,6 @@ The project aims to:
 
 - Additional regulatory source collectors
 - Artificial Intelligence content classification
-- Regulatory relevance scoring
 - Identification of impacts on financial institutions
 - Automated summaries
 - Detection of similar publications
@@ -64,21 +68,28 @@ The project aims to:
 ```text
 regulatory-ai-radar
 ├── scripts
+│   ├── analyze_articles.py
 │   ├── list_articles.py
 │   └── run_anpd.py
 ├── src
 │   └── regulatory_ai_radar
+│       ├── analysis
+│       │   ├── __init__.py
+│       │   └── relevance.py
 │       ├── collectors
 │       │   ├── __init__.py
 │       │   └── anpd.py
 │       ├── database
 │       │   ├── __init__.py
+│       │   ├── analysis_repository.py
 │       │   ├── base.py
 │       │   ├── models.py
 │       │   ├── repository.py
 │       │   └── session.py
 │       ├── __init__.py
 │       └── entities.py
+├── tests
+│   └── test_relevance.py
 ├── .gitignore
 ├── pyproject.toml
 └── README.md
@@ -150,14 +161,61 @@ python scripts\list_articles.py
 This script reads the local database and displays the main information
 for every stored article.
 
+#### Analyze and rank stored articles
+
+```powershell
+python scripts\analyze_articles.py
+```
+
+This script:
+
+1. reads the stored articles;
+2. analyzes their title, summary, and body;
+3. calculates an explainable relevance score;
+4. classifies each article as low, medium, or high relevance;
+5. stores or updates the analysis;
+6. ranks the articles from highest to lowest score.
+
 #### Validate Python files
 
 ```powershell
-python -m compileall src scripts
+python -m compileall src scripts tests
 ```
 
-This command checks the project files for syntax and indentation errors
-without running the news collection.
+This command checks the project files for syntax and indentation errors.
+
+#### Run automated tests
+
+```powershell
+python -m unittest discover -s tests -v
+```
+
+This command validates the deterministic scoring rules.
+
+### Relevance scoring
+
+The initial relevance model is deterministic and auditable. It does not
+use a Large Language Model.
+
+The analyzer:
+
+- normalizes capitalization, accents, punctuation, and whitespace;
+- searches for complete regulatory keywords and expressions;
+- assigns a predefined weight to each matched keyword;
+- adds a 50% bonus when a keyword appears in the title;
+- limits the final score to 100;
+- records the matched keywords and categories.
+
+The relevance levels are:
+
+| Score | Level | Relevant |
+|---:|---|---|
+| 0–29 | Low | No |
+| 30–59 | Medium | Yes |
+| 60–100 | High | Yes |
+
+The deterministic score will provide an objective baseline for future
+Artificial Intelligence analysis.
 
 ### Database
 
@@ -168,11 +226,17 @@ created automatically at:
 data/regulatory_ai_radar.db
 ```
 
-SQLAlchemy provides the database models, sessions, queries, and
-transaction management.
+SQLAlchemy provides the database models, sessions, queries, constraints,
+and transaction management.
 
-Article URLs are unique in the database and are used to prevent
-duplicate records.
+The database currently contains:
+
+- `news_articles`: normalized regulatory news;
+- `article_analyses`: relevance scores and supporting evidence.
+
+Article URLs are unique and prevent duplicate news records. Each article
+has one current analysis, which is updated when the scoring script runs
+again.
 
 ### Status
 
@@ -185,8 +249,10 @@ duplicate records.
 - [x] Database persistence
 - [x] Duplicate prevention
 - [x] Stored article listing
+- [x] Deterministic relevance ranking
+- [x] Analysis persistence
+- [x] Automated scoring tests
 - [ ] Additional regulatory sources
-- [ ] Relevance ranking
 - [ ] Artificial Intelligence classification
 - [ ] Dashboard
 - [ ] Daily automation
@@ -210,9 +276,9 @@ O Regulatory AI Radar é um projeto de inteligência regulatória voltado
 ao acompanhamento de Inteligência Artificial, governança, riscos,
 proteção de dados e regulação do setor financeiro.
 
-A aplicação coleta publicações de fontes regulatórias e institucionais
-e armazena informações normalizadas para futura classificação, análise
-e monitoramento.
+A aplicação coleta publicações de fontes regulatórias e institucionais,
+armazena informações normalizadas e calcula um score auditável de
+relevância regulatória.
 
 ### Objetivo
 
@@ -222,7 +288,8 @@ O projeto tem como objetivos:
 - identificar conteúdos relacionados à Inteligência Artificial;
 - organizar publicações de diferentes fontes regulatórias;
 - impedir o armazenamento de registros duplicados;
-- apoiar futuras análises de relevância e impacto;
+- calcular scores de relevância regulatória;
+- apoiar futuras análises de impacto com Inteligência Artificial;
 - fornecer dados estruturados para dashboards e relatórios
   automatizados.
 
@@ -235,7 +302,11 @@ O projeto tem como objetivos:
 - Persistência local com SQLite
 - Mapeamento e consultas ao banco com SQLAlchemy
 - Prevenção de duplicidades por meio das URLs
-- Script para listar as notícias armazenadas
+- Score determinístico de relevância regulatória
+- Evidências de palavras-chave e categorias para cada score
+- Ranking da maior para a menor relevância
+- Persistência e atualização das análises
+- Testes unitários automatizados para as regras de pontuação
 
 ### Fontes planejadas
 
@@ -251,8 +322,7 @@ O projeto tem como objetivos:
 ### Funcionalidades planejadas
 
 - Coletores para outras fontes regulatórias
-- Classificação de conteúdos relacionados à Inteligência Artificial
-- Pontuação de relevância regulatória
+- Classificação de conteúdo com Inteligência Artificial
 - Identificação de impactos para instituições financeiras
 - Resumos automatizados
 - Detecção de publicações semelhantes
@@ -265,21 +335,28 @@ O projeto tem como objetivos:
 ```text
 regulatory-ai-radar
 ├── scripts
+│   ├── analyze_articles.py
 │   ├── list_articles.py
 │   └── run_anpd.py
 ├── src
 │   └── regulatory_ai_radar
+│       ├── analysis
+│       │   ├── __init__.py
+│       │   └── relevance.py
 │       ├── collectors
 │       │   ├── __init__.py
 │       │   └── anpd.py
 │       ├── database
 │       │   ├── __init__.py
+│       │   ├── analysis_repository.py
 │       │   ├── base.py
 │       │   ├── models.py
 │       │   ├── repository.py
 │       │   └── session.py
 │       ├── __init__.py
 │       └── entities.py
+├── tests
+│   └── test_relevance.py
 ├── .gitignore
 ├── pyproject.toml
 └── README.md
@@ -350,14 +427,62 @@ python scripts\list_articles.py
 Esse script consulta o banco local e apresenta as principais
 informações de cada notícia armazenada.
 
+#### Analisar e classificar as notícias armazenadas
+
+```powershell
+python scripts\analyze_articles.py
+```
+
+Esse script:
+
+1. consulta as notícias armazenadas;
+2. analisa o título, o resumo e o corpo;
+3. calcula um score de relevância explicável;
+4. classifica cada notícia como de relevância baixa, média ou alta;
+5. armazena ou atualiza a análise;
+6. ordena as notícias da maior para a menor pontuação.
+
 #### Validar os arquivos Python
 
 ```powershell
-python -m compileall src scripts
+python -m compileall src scripts tests
 ```
 
-Esse comando verifica erros de sintaxe e indentação sem executar a
-coleta de notícias.
+Esse comando verifica erros de sintaxe e indentação nos arquivos do
+projeto.
+
+#### Executar os testes automatizados
+
+```powershell
+python -m unittest discover -s tests -v
+```
+
+Esse comando valida as regras determinísticas de pontuação.
+
+### Score de relevância
+
+O modelo inicial de relevância é determinístico e auditável. Ele não
+utiliza um Large Language Model.
+
+O analisador:
+
+- normaliza letras maiúsculas, acentos, pontuação e espaços;
+- procura palavras-chave e expressões regulatórias completas;
+- atribui um peso predefinido a cada termo encontrado;
+- adiciona um bônus de 50% quando o termo aparece no título;
+- limita o score final a 100;
+- registra as palavras e categorias encontradas.
+
+As faixas de relevância são:
+
+| Score | Nível | Relevante |
+|---:|---|---|
+| 0–29 | Baixa | Não |
+| 30–59 | Média | Sim |
+| 60–100 | Alta | Sim |
+
+O score determinístico servirá como base objetiva para uma futura
+análise com Inteligência Artificial.
 
 ### Banco de dados
 
@@ -368,11 +493,17 @@ automaticamente em:
 data/regulatory_ai_radar.db
 ```
 
-O SQLAlchemy fornece os modelos, as sessões, as consultas e o
+O SQLAlchemy fornece os modelos, sessões, consultas, restrições e
 gerenciamento das transações.
 
-As URLs das notícias são únicas no banco e são utilizadas para impedir
-registros duplicados.
+Atualmente, o banco contém:
+
+- `news_articles`: notícias regulatórias normalizadas;
+- `article_analyses`: scores de relevância e suas evidências.
+
+As URLs das notícias são únicas e impedem registros duplicados. Cada
+notícia possui uma análise atual, que é atualizada quando o script de
+pontuação é executado novamente.
 
 ### Status
 
@@ -385,8 +516,10 @@ registros duplicados.
 - [x] Persistência em banco de dados
 - [x] Prevenção de duplicidades
 - [x] Listagem das notícias armazenadas
+- [x] Ranking determinístico de relevância
+- [x] Persistência das análises
+- [x] Testes automatizados do score
 - [ ] Outras fontes regulatórias
-- [ ] Ranking de relevância
 - [ ] Classificação com Inteligência Artificial
 - [ ] Dashboard
 - [ ] Automação diária
