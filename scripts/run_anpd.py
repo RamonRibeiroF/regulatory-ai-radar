@@ -1,8 +1,8 @@
-import json
-from dataclasses import asdict
-
-from regulatory_ai_radar.collectors.anpd import (
-    ANPDCollector,
+from regulatory_ai_radar.collectors.anpd import ANPDCollector
+from regulatory_ai_radar.database.repository import NewsRepository
+from regulatory_ai_radar.database.session import (
+    SessionFactory,
+    initialize_database,
 )
 
 
@@ -12,40 +12,52 @@ def main() -> None:
     print("Collector: ANPD")
     print("=" * 70)
 
-    # Step 1: create the ANPD collector.
+    # Step 1: create the database and its tables when necessary.
+    initialize_database()
+
+    # Step 2: create the ANPD collector.
     collector = ANPDCollector()
 
     print("\nFetching news articles...\n")
 
-    # Step 2: request up to five news articles.
+    # Step 3: request up to five news articles.
     news_items = collector.collect(
         limit=5
     )
 
-    # Step 3: display the number of collected articles.
     print(
-        f"{len(news_items)} articles collected.\n"
+        f"{len(news_items)} articles collected."
     )
 
-    # Step 4: process each collected article individually.
+    if not news_items:
+        print("No articles were available for persistence.")
+        return
+
+    # Step 4: open a database session and persist the articles.
+    with SessionFactory() as session:
+        repository = NewsRepository(session)
+
+        result = repository.save_many(
+            news_items
+        )
+
+        total_articles = repository.count()
+
+    # Step 5: display the database operation summary.
+    print("\nDatabase summary:")
+    print(f"- Inserted: {result.inserted}")
+    print(f"- Skipped as duplicates: {result.skipped}")
+    print(f"- Total stored: {total_articles}")
+
+    # Step 6: display the collected article titles and URLs.
+    print("\nCollected articles:")
+
     for index, item in enumerate(
         news_items,
         start=1,
     ):
-        print("=" * 70)
-        print(f"ARTICLE {index}")
-        print("=" * 70)
-
-        # Step 5: convert the article into readable JSON.
-        print(
-            json.dumps(
-                asdict(item),
-                ensure_ascii=False,
-                indent=2,
-            )
-        )
-
-        print()
+        print(f"\n{index}. {item.title}")
+        print(f"   {item.url}")
 
 
 # Run main() only when this file is executed directly.

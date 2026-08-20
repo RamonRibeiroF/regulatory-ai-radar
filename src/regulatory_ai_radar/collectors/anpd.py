@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import re
-from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 from time import sleep
 from urllib.parse import urlparse
@@ -9,6 +8,7 @@ from urllib.parse import urlparse
 import requests
 from bs4 import BeautifulSoup
 
+from regulatory_ai_radar.entities import NewsItem
 
 ANPD_NEWS_URL = "https://www.gov.br/anpd/pt-br/assuntos/noticias"
 
@@ -24,19 +24,6 @@ BRASILIA_TIMEZONE = timezone(timedelta(hours=-3))
 PUBLISHED_PATTERN = re.compile(
     r"Publicado em\s+(\d{2}/\d{2}/\d{4})\s+(\d{2}:\d{2})"
 )
-
-
-@dataclass(slots=True)
-class NewsItem:
-    """Represent a news article collected from a regulatory source."""
-
-    source: str
-    title: str
-    url: str
-    published_at: str | None
-    summary: str | None
-    body: str | None
-    collected_at: str
 
 
 def clean_text(text: str) -> str:
