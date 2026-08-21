@@ -30,10 +30,11 @@ The project aims to:
 - Brazilian Chamber of Deputies
 - European Commission — Artificial Intelligence topic
 - Financial Stability Board (FSB)
+- Bank for International Settlements — Innovation Hub (BIS)
 
 ### Current capabilities
 
-- Collection from five official sources
+- Collection from six official sources
 - Explicit newest-to-oldest ordering
 - Extraction of titles, dates, summaries, content, and official URLs
 - Official domain and publication-path validation
@@ -53,7 +54,6 @@ The project aims to:
 
 ### Planned sources
 
-- Bank for International Settlements (BIS)
 - International Association of Privacy Professionals (IAPP)
 - OECD.AI
 
@@ -80,6 +80,7 @@ regulatory-ai-radar
 │   ├── list_articles.py
 │   ├── run_anpd.py
 │   ├── run_bcb.py
+│   ├── run_bis.py
 │   ├── run_camara.py
 │   ├── run_eu_ai_office.py
 │   └── run_fsb.py
@@ -92,6 +93,7 @@ regulatory-ai-radar
 │       │   ├── __init__.py
 │       │   ├── anpd.py
 │       │   ├── bcb.py
+│       │   ├── bis.py
 │       │   ├── camara.py
 │       │   ├── eu_ai_office.py
 │       │   └── fsb.py
@@ -107,6 +109,7 @@ regulatory-ai-radar
 │       └── entities.py
 ├── tests
 │   ├── test_bcb_collector.py
+│   ├── test_bis_collector.py
 │   ├── test_camara_collector.py
 │   ├── test_eu_ai_office_collector.py
 │   ├── test_fsb_collector.py
@@ -162,14 +165,7 @@ Editable mode allows source-code changes to be used without reinstalling the pro
 python scripts\run_anpd.py
 ```
 
-This script:
-
-1. initializes the SQLite database;
-2. collects up to five recent ANPD news articles;
-3. normalizes the collected data;
-4. stores new articles;
-5. skips URLs already stored;
-6. displays a persistence summary.
+The script collects up to five recent official ANPD news articles, normalizes them, stores new records, and skips duplicate URLs.
 
 #### Collect BCB news
 
@@ -177,16 +173,7 @@ This script:
 python scripts\run_bcb.py
 ```
 
-This script:
-
-1. accesses the official BCB Atom feed;
-2. selects the current year automatically;
-3. parses valid feed entries;
-4. rejects external links;
-5. sorts articles from newest to oldest;
-6. selects up to five recent articles;
-7. stores new articles;
-8. skips duplicates.
+The script accesses the official BCB Atom feed, validates official links, orders articles from newest to oldest, and stores up to five recent records.
 
 #### Collect Chamber of Deputies propositions
 
@@ -194,17 +181,7 @@ This script:
 python scripts\run_camara.py
 ```
 
-This script:
-
-1. accesses the official Chamber of Deputies API;
-2. searches recent propositions using regulatory topics;
-3. limits the search to selected proposition types;
-4. searches the configured recent period;
-5. removes repeated search results;
-6. sorts propositions from newest to oldest;
-7. selects up to five propositions;
-8. stores new records;
-9. skips duplicates.
+The script searches the official Chamber API by regulatory topics, removes repeated results, orders propositions by date, and stores up to five recent records.
 
 #### Collect European AI publications
 
@@ -212,18 +189,7 @@ This script:
 python scripts\run_eu_ai_office.py
 ```
 
-This script:
-
-1. accesses the European Commission digital strategy portal;
-2. selects the official Artificial Intelligence topic;
-3. identifies publication cards and dates;
-4. validates official European Commission links;
-5. removes repeated links;
-6. sorts candidates from newest to oldest;
-7. opens only the necessary detail pages;
-8. extracts titles, summaries, and content;
-9. stores new publications;
-10. skips duplicates.
+The script accesses the European Commission digital strategy portal, selects the Artificial Intelligence topic, validates links, orders candidates, and extracts the most recent publications.
 
 #### Collect FSB publications
 
@@ -231,16 +197,24 @@ This script:
 python scripts\run_fsb.py
 ```
 
+The script accesses the official FSB Financial Innovation page, extracts publication cards, validates dated official URLs, and stores up to five recent records.
+
+#### Collect BIS Innovation Hub publications
+
+```powershell
+python scripts\run_bis.py
+```
+
 This script:
 
-1. accesses the official FSB Financial Innovation page;
-2. identifies official publication cards;
-3. extracts titles, publication dates, summaries, and URLs;
-4. validates FSB domains and dated publication paths;
-5. removes repeated publication URLs;
-6. sorts candidates from newest to oldest;
+1. accesses the official BIS Innovation Hub publication list;
+2. validates the JSON response;
+3. identifies official publication paths;
+4. normalizes canonical BIS URLs;
+5. removes duplicate candidates;
+6. sorts all candidates from newest to oldest;
 7. opens only the detail pages required by the limit;
-8. extracts normalized publication content;
+8. extracts titles, summaries, content, dates, and URLs;
 9. stores up to five recent publications;
 10. skips URLs already stored.
 
@@ -275,7 +249,7 @@ Run this script again after collecting new publications so the new records recei
 python -m streamlit run dashboard\app.py
 ```
 
-The local dashboard is normally available at:
+The dashboard is normally available at:
 
 ```text
 http://localhost:8501
@@ -287,13 +261,13 @@ The dashboard provides:
 - number of relevant publications;
 - number of high-relevance publications;
 - average relevance score;
-- source filters for ANPD, BCB, CAMARA, EU_AI_OFFICE, and FSB;
+- source filters for ANPD, BCB, BIS, CAMARA, EU_AI_OFFICE, and FSB;
 - relevance-level filters;
 - minimum-score selection;
 - relevant-only selection;
 - text search;
 - ranked regulatory publication cards;
-- links to original publications.
+- links to original official publications.
 
 To stop the dashboard, return to the terminal and press:
 
@@ -315,7 +289,7 @@ Run the automated test suite:
 python -m unittest discover -s tests -v
 ```
 
-The suite currently contains 26 tests covering:
+The suite currently contains 32 tests covering:
 
 - relevance score calculation;
 - relevance thresholds;
@@ -334,6 +308,11 @@ The suite currently contains 26 tests covering:
 - FSB official-domain validation;
 - FSB article-content normalization;
 - FSB collection-limit enforcement;
+- BIS publication ordering;
+- BIS duplicate removal;
+- BIS official-path validation;
+- BIS article-content normalization;
+- BIS collection-limit enforcement;
 - zero-limit collection without network requests.
 
 ### Data normalization
@@ -371,8 +350,6 @@ bcb.gov.br
 www.bcb.gov.br
 ```
 
-Query parameters and fragments are removed before persistence.
-
 #### Chamber of Deputies
 
 The Chamber collector uses the official Open Data API:
@@ -381,7 +358,7 @@ The Chamber collector uses the official Open Data API:
 https://dadosabertos.camara.leg.br/api/v2/proposicoes
 ```
 
-The collector searches propositions associated with regulatory topics such as:
+It searches propositions related to topics such as:
 
 ```text
 artificial intelligence
@@ -393,8 +370,6 @@ virtual assets
 financial system
 central bank
 ```
-
-The original searches are performed in Portuguese.
 
 The selected proposition types are:
 
@@ -422,24 +397,20 @@ The listing uses the official Artificial Intelligence topic:
 topic=119
 ```
 
-Only HTTPS links from the following domain and path are accepted:
+Only HTTPS links from the following official domain and path are accepted:
 
 ```text
 digital-strategy.ec.europa.eu
 /en/news/
 ```
 
-Candidates are deduplicated and sorted before detail pages are requested.
-
 #### Financial Stability Board
 
-The FSB collector uses the official Financial Innovation policy page:
+The FSB collector uses the official Financial Innovation page:
 
 ```text
 https://www.fsb.org/policy_areas/financial-innovation/
 ```
-
-This listing provides structured publication cards containing titles, dates, summaries, and official links.
 
 Only HTTPS links belonging to these domains are accepted:
 
@@ -448,22 +419,68 @@ fsb.org
 www.fsb.org
 ```
 
-Publication URLs must also follow the official dated structure:
+Publication URLs must follow the official dated structure:
 
 ```text
 /YYYY/MM/
 ```
 
+Candidates are normalized, deduplicated, sorted, and opened only until the requested limit is reached.
+
+#### Bank for International Settlements
+
+The BIS collector uses the official BIS Innovation Hub publication list:
+
+```text
+https://www.bis.org/api/document_lists/bisih_publications.json
+```
+
+The endpoint provides structured information including:
+
+- publication paths;
+- official titles;
+- publication dates;
+- topics;
+- institutional sources.
+
+Only paths matching the official publication structure are accepted:
+
+```text
+/publ/<publication-identifier>
+```
+
+Examples include:
+
+```text
+/publ/othp109
+/publ/othp112
+```
+
+The collector converts these paths into canonical official pages:
+
+```text
+https://www.bis.org/publ/<publication-identifier>.htm
+```
+
+Only these domains are accepted:
+
+```text
+bis.org
+www.bis.org
+```
+
 The collector:
 
-1. normalizes official URLs;
-2. removes query parameters and fragments;
-3. removes duplicate candidates;
-4. sorts candidates from newest to oldest;
-5. opens only the pages required to reach the requested limit;
-6. extracts the main publication content.
+1. validates the JSON response;
+2. validates publication paths;
+3. builds canonical URLs;
+4. removes duplicate URLs;
+5. sorts all candidates from newest to oldest;
+6. selects the most recent candidates;
+7. opens only the pages required by the limit;
+8. extracts summaries and main content from the official detail pages.
 
-This approach keeps HTTP requests controlled while providing enough information for relevance analysis.
+This strategy uses the BIS structured data source for discovery while preserving the official HTML publication page as the public URL.
 
 ### Relevance scoring
 
@@ -541,13 +558,14 @@ The database file is excluded from Git.
 - [x] Chamber of Deputies proposition collector
 - [x] European AI publication collector
 - [x] FSB publication collector
+- [x] BIS Innovation Hub publication collector
 - [x] Shared publication normalization
 - [x] SQLite persistence
 - [x] Duplicate prevention
 - [x] Deterministic relevance ranking
 - [x] Analysis persistence
 - [x] Automated relevance tests
-- [x] Automated tests for BCB, Chamber, European AI, and FSB collectors
+- [x] Automated tests for BCB, Chamber, European AI, FSB, and BIS collectors
 - [x] Interactive multi-source dashboard
 - [ ] Additional international regulatory sources
 - [ ] AI-assisted classification
@@ -582,7 +600,7 @@ A aplicação coleta publicações de fontes oficiais nacionais e internacionais
 O projeto busca:
 
 - automatizar a coleta de publicações regulatórias e legislativas;
-- priorizar sempre as publicações mais recentes;
+- priorizar as publicações mais recentes;
 - identificar conteúdos relacionados à Inteligência Artificial e à regulação;
 - organizar publicações de diferentes fontes oficiais;
 - impedir registros duplicados;
@@ -597,30 +615,30 @@ O projeto busca:
 - Câmara dos Deputados
 - Comissão Europeia — tópico de Inteligência Artificial
 - Financial Stability Board (FSB)
+- Bank for International Settlements — Innovation Hub (BIS)
 
 ### Funcionalidades atuais
 
-- Coleta de cinco fontes oficiais
-- Ordenação explícita da publicação mais recente para a mais antiga
+- Coleta de seis fontes oficiais
+- Ordenação da publicação mais recente para a mais antiga
 - Extração de títulos, datas, resumos, conteúdo e URLs
-- Validação dos domínios e caminhos oficiais
-- Normalização compartilhada das publicações
+- Validação de domínios e caminhos oficiais
+- Normalização compartilhada
 - Persistência local com SQLite
 - Mapeamento e consultas com SQLAlchemy
 - Prevenção de duplicidades por URLs únicas
-- Score determinístico de relevância regulatória
+- Score determinístico de relevância
 - Evidências de palavras-chave e categorias
 - Ranking da maior para a menor relevância
 - Persistência e atualização das análises
 - Dashboard interativo com Streamlit
 - Filtros por fonte, nível, score, relevância e texto
 - Indicadores dinâmicos e cartões de publicações
-- Links para as publicações oficiais
+- Links para publicações oficiais
 - Testes automatizados dos coletores e da relevância
 
 ### Fontes planejadas
 
-- Bank for International Settlements (BIS)
 - International Association of Privacy Professionals (IAPP)
 - OECD.AI
 
@@ -647,6 +665,7 @@ regulatory-ai-radar
 │   ├── list_articles.py
 │   ├── run_anpd.py
 │   ├── run_bcb.py
+│   ├── run_bis.py
 │   ├── run_camara.py
 │   ├── run_eu_ai_office.py
 │   └── run_fsb.py
@@ -659,6 +678,7 @@ regulatory-ai-radar
 │       │   ├── __init__.py
 │       │   ├── anpd.py
 │       │   ├── bcb.py
+│       │   ├── bis.py
 │       │   ├── camara.py
 │       │   ├── eu_ai_office.py
 │       │   └── fsb.py
@@ -674,6 +694,7 @@ regulatory-ai-radar
 │       └── entities.py
 ├── tests
 │   ├── test_bcb_collector.py
+│   ├── test_bis_collector.py
 │   ├── test_camara_collector.py
 │   ├── test_eu_ai_office_collector.py
 │   ├── test_fsb_collector.py
@@ -683,18 +704,18 @@ regulatory-ai-radar
 └── README.md
 ```
 
-A pasta local `data` é criada automaticamente durante a inicialização do banco e não é enviada ao Git.
+A pasta `data` é criada automaticamente durante a inicialização do banco e não é enviada ao Git.
 
 ### Requisitos
 
 - Python 3.12 ou superior
 - Git
 - Conexão com a internet
-- Navegador moderno para acessar o dashboard
+- Navegador moderno para o dashboard
 
 ### Instalação
 
-Clone o repositório e entre na pasta:
+Clone o repositório:
 
 ```powershell
 git clone <url-do-repositorio>
@@ -719,8 +740,6 @@ Instale o projeto em modo editável:
 python -m pip install -e .
 ```
 
-O modo editável permite utilizar as alterações no código sem reinstalar o projeto a cada modificação.
-
 ### Utilização
 
 #### Coletar notícias da ANPD
@@ -729,7 +748,7 @@ O modo editável permite utilizar as alterações no código sem reinstalar o pr
 python scripts\run_anpd.py
 ```
 
-O script inicializa o banco, coleta até cinco notícias recentes, normaliza os dados, armazena registros novos e ignora URLs duplicadas.
+Coleta até cinco notícias recentes, normaliza os dados, armazena registros novos e ignora URLs duplicadas.
 
 #### Coletar notícias do BCB
 
@@ -737,7 +756,7 @@ O script inicializa o banco, coleta até cinco notícias recentes, normaliza os 
 python scripts\run_bcb.py
 ```
 
-O script acessa o feed Atom oficial, seleciona o ano atual, valida os links, ordena as notícias e armazena até cinco registros recentes.
+Acessa o feed Atom oficial, valida links, ordena as notícias e armazena até cinco registros recentes.
 
 #### Coletar proposições da Câmara
 
@@ -745,7 +764,7 @@ O script acessa o feed Atom oficial, seleciona o ano atual, valida os links, ord
 python scripts\run_camara.py
 ```
 
-O script pesquisa temas regulatórios na API oficial, remove resultados repetidos, ordena as proposições pela data e armazena até cinco registros.
+Pesquisa temas regulatórios na API oficial, remove resultados repetidos, ordena as proposições e armazena até cinco registros.
 
 #### Coletar publicações europeias sobre IA
 
@@ -753,7 +772,7 @@ O script pesquisa temas regulatórios na API oficial, remove resultados repetido
 python scripts\run_eu_ai_office.py
 ```
 
-O script acessa o portal da Comissão Europeia, seleciona o tópico de IA, valida os links, ordena as publicações e extrai o conteúdo das páginas mais recentes.
+Acessa o portal da Comissão Europeia, seleciona o tópico de IA, valida os links e extrai as publicações mais recentes.
 
 #### Coletar publicações do FSB
 
@@ -761,16 +780,24 @@ O script acessa o portal da Comissão Europeia, seleciona o tópico de IA, valid
 python scripts\run_fsb.py
 ```
 
+Acessa a página oficial de inovação financeira, valida os links datados e armazena até cinco publicações.
+
+#### Coletar publicações do BIS Innovation Hub
+
+```powershell
+python scripts\run_bis.py
+```
+
 O script:
 
-1. acessa a página oficial de inovação financeira do FSB;
-2. identifica os cartões das publicações;
-3. extrai títulos, datas, resumos e URLs;
-4. valida domínios e caminhos oficiais;
-5. remove URLs repetidas;
-6. ordena as publicações da mais recente para a mais antiga;
+1. acessa a lista oficial do BIS Innovation Hub;
+2. valida a resposta JSON;
+3. identifica os caminhos oficiais;
+4. constrói URLs canônicas;
+5. remove candidatos duplicados;
+6. ordena os resultados da data mais recente para a mais antiga;
 7. abre somente as páginas necessárias;
-8. extrai e normaliza o conteúdo;
+8. extrai títulos, resumos, conteúdo, datas e URLs;
 9. armazena até cinco publicações;
 10. ignora registros duplicados.
 
@@ -780,17 +807,17 @@ O script:
 python scripts\list_articles.py
 ```
 
-Consulta o banco local e exibe as informações principais das publicações.
+Consulta o banco e exibe as informações principais das publicações.
 
-#### Analisar e classificar publicações
+#### Analisar publicações
 
 ```powershell
 python scripts\analyze_articles.py
 ```
 
-O script calcula o score, define o nível de relevância, registra as evidências, persiste a análise e apresenta o ranking.
+Calcula o score, define o nível, registra evidências, persiste as análises e apresenta o ranking.
 
-Execute novamente esse comando depois de cada coleta.
+Execute novamente depois de cada coleta.
 
 #### Iniciar o dashboard
 
@@ -810,7 +837,7 @@ Ele oferece:
 - quantidade de publicações relevantes;
 - quantidade com relevância alta;
 - média dos scores;
-- filtros para ANPD, BCB, CAMARA, EU_AI_OFFICE e FSB;
+- filtros para ANPD, BCB, BIS, CAMARA, EU_AI_OFFICE e FSB;
 - filtro por nível;
 - score mínimo;
 - opção para exibir somente publicações relevantes;
@@ -826,7 +853,7 @@ Ctrl + C
 
 ### Validação
 
-Verifique sintaxe e indentação:
+Verifique a sintaxe e a indentação:
 
 ```powershell
 python -m compileall src scripts tests dashboard
@@ -838,7 +865,7 @@ Execute os testes:
 python -m unittest discover -s tests -v
 ```
 
-A suíte possui 26 testes e verifica:
+A suíte possui 32 testes e verifica:
 
 - cálculo e faixas do score;
 - normalização de acentos e letras;
@@ -851,11 +878,13 @@ A suíte possui 26 testes e verifica:
 - remoção de duplicidades e validação de períodos;
 - ordenação e normalização das publicações europeias;
 - validação das URLs e limites do coletor europeu;
-- ordenação das publicações do FSB;
-- remoção de cartões repetidos do FSB;
-- validação dos domínios oficiais do FSB;
-- normalização do conteúdo do FSB;
-- respeito ao limite de coleta do FSB;
+- ordenação, normalização e limites do FSB;
+- validação dos domínios do FSB;
+- ordenação das publicações do BIS;
+- remoção de resultados duplicados do BIS;
+- validação dos caminhos oficiais do BIS;
+- normalização do conteúdo do BIS;
+- respeito ao limite de coleta do BIS;
 - ausência de requisições quando o limite é zero.
 
 ### Normalização dos dados
@@ -872,52 +901,33 @@ body
 collected_at
 ```
 
-Esse contrato permite que o banco, o analisador e o dashboard processem todas as fontes da mesma forma.
+Esse contrato permite que o banco, o analisador e o dashboard processem todas as fontes da mesma maneira.
 
 ### Estratégias de coleta
 
 #### BCB
 
-O coletor utiliza o feed Atom oficial:
+Utiliza o feed Atom oficial:
 
 ```text
 https://www.bcb.gov.br/api/feed/sitebcb/sitefeeds/noticias
 ```
 
-Somente estes domínios são aceitos:
-
-```text
-bcb.gov.br
-www.bcb.gov.br
-```
-
-Os resultados são ordenados antes da aplicação do limite.
+Somente os domínios oficiais são aceitos.
 
 #### Câmara dos Deputados
 
-O coletor utiliza a API oficial:
+Utiliza a API oficial:
 
 ```text
 https://dadosabertos.camara.leg.br/api/v2/proposicoes
 ```
 
-Ele pesquisa temas como IA, algoritmos, proteção de dados, cibersegurança, ativos virtuais, sistema financeiro e Banco Central.
-
-Os tipos considerados são:
-
-```text
-PL
-PLP
-PEC
-MPV
-PDL
-```
-
-Resultados repetidos são removidos pelo identificador oficial.
+Pesquisa temas regulatórios e remove resultados repetidos pelo identificador oficial.
 
 #### Publicações europeias sobre IA
 
-O coletor utiliza:
+Utiliza:
 
 ```text
 https://digital-strategy.ec.europa.eu/en/news
@@ -929,35 +939,41 @@ Com o tópico:
 topic=119
 ```
 
-Somente links HTTPS do domínio e caminho oficiais são aceitos:
-
-```text
-digital-strategy.ec.europa.eu
-/en/news/
-```
+Somente links oficiais de notícias são aceitos.
 
 #### Financial Stability Board
 
-O coletor utiliza a página oficial de Financial Innovation:
+Utiliza:
 
 ```text
 https://www.fsb.org/policy_areas/financial-innovation/
 ```
 
-Somente links HTTPS dos seguintes domínios são aceitos:
+Somente links dos domínios oficiais e com caminhos datados são aceitos.
+
+#### Bank for International Settlements
+
+Utiliza a lista estruturada oficial:
 
 ```text
-fsb.org
-www.fsb.org
+https://www.bis.org/api/document_lists/bisih_publications.json
 ```
 
-Os links também devem seguir o padrão oficial de publicações:
+São aceitos somente caminhos como:
 
 ```text
-/YYYY/MM/
+/publ/othp109
+/publ/othp112
 ```
 
-O coletor normaliza as URLs, remove parâmetros, elimina duplicidades, ordena os candidatos e abre somente as páginas necessárias para alcançar o limite solicitado.
+Eles são convertidos em páginas oficiais:
+
+```text
+https://www.bis.org/publ/othp109.htm
+https://www.bis.org/publ/othp112.htm
+```
+
+O coletor valida a resposta, normaliza os caminhos, elimina duplicidades, ordena as candidatas e abre somente as páginas necessárias para alcançar o limite.
 
 ### Score de relevância
 
@@ -968,7 +984,7 @@ O analisador:
 - normaliza maiúsculas, acentos, pontuação e espaços;
 - procura palavras-chave e expressões regulatórias;
 - atribui pesos predefinidos;
-- acrescenta bônus de 50% para termos encontrados no título;
+- acrescenta bônus de 50% para termos no título;
 - limita o score a 100;
 - registra palavras-chave e categorias.
 
@@ -978,9 +994,7 @@ O analisador:
 | 30–59 | Média | Sim |
 | 60–100 | Alta | Sim |
 
-### Arquitetura do dashboard
-
-O dashboard consulta o SQLite por meio de um repositório dedicado à leitura.
+### Arquitetura
 
 ```text
 Fontes oficiais
@@ -1013,7 +1027,7 @@ O banco contém:
 - `news_articles`: publicações normalizadas;
 - `article_analyses`: scores e evidências.
 
-As URLs são únicas e impedem duplicidades. O arquivo do banco não é enviado ao Git.
+As URLs são únicas e impedem duplicidades. O banco local não é enviado ao Git.
 
 ### Status
 
@@ -1027,13 +1041,14 @@ As URLs são únicas e impedem duplicidades. O arquivo do banco não é enviado 
 - [x] Coletor da Câmara
 - [x] Coletor europeu de IA
 - [x] Coletor do FSB
+- [x] Coletor do BIS Innovation Hub
 - [x] Normalização compartilhada
 - [x] Persistência com SQLite
 - [x] Prevenção de duplicidades
 - [x] Ranking determinístico
 - [x] Persistência das análises
 - [x] Testes automatizados de relevância
-- [x] Testes dos coletores BCB, Câmara, Comissão Europeia e FSB
+- [x] Testes dos coletores BCB, Câmara, Comissão Europeia, FSB e BIS
 - [x] Dashboard interativo com múltiplas fontes
 - [ ] Outras fontes internacionais
 - [ ] Classificação assistida por IA
