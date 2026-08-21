@@ -83,7 +83,7 @@ class NewsArticle(Base):
 
 
 class ArticleAnalysis(Base):
-    """Represent the relevance analysis of a stored article."""
+    """Represent the deterministic relevance analysis of an article."""
 
     # Step 6: define the article analysis table and constraints.
     __tablename__ = "article_analyses"
@@ -152,10 +152,67 @@ class ArticleAnalysis(Base):
     )
 
 
+class ArticleFeedback(Base):
+    """Representa o feedback de relevância dado pelo usuário."""
+
+    # Passo 12: define a tabela e as regras de avaliação.
+    __tablename__ = "article_feedback"
+
+    __table_args__ = (
+        CheckConstraint(
+            "human_rating >= 1 AND human_rating <= 5",
+            name="ck_article_feedback_human_rating",
+        ),
+    )
+
+    # Passo 13: cria o identificador principal do feedback.
+    id: Mapped[int] = mapped_column(
+        Integer,
+        primary_key=True,
+        autoincrement=True,
+    )
+
+    # Passo 14: associa um único feedback atual a uma notícia.
+    article_id: Mapped[int] = mapped_column(
+        ForeignKey(
+            "news_articles.id",
+            ondelete="CASCADE",
+        ),
+        nullable=False,
+        unique=True,
+        index=True,
+    )
+
+    # Passo 15: armazena a avaliação e a explicação opcional.
+    human_rating: Mapped[int] = mapped_column(
+        Integer,
+        nullable=False,
+    )
+
+    notes: Mapped[str | None] = mapped_column(
+        Text,
+        nullable=True,
+    )
+
+    # Passo 16: registra os horários de criação e modificação.
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        default=utc_now,
+        nullable=False,
+    )
+
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        default=utc_now,
+        onupdate=utc_now,
+        nullable=False,
+    )
+
+
 class PipelineRun(Base):
     """Represent one complete automated pipeline execution."""
 
-    # Step 12: define the pipeline execution table and status rules.
+    # Step 17: define the pipeline execution table and status rules.
     __tablename__ = "pipeline_runs"
 
     __table_args__ = (
@@ -240,7 +297,7 @@ class PipelineRun(Base):
 class PipelineSourceRun(Base):
     """Represent one source result inside a pipeline execution."""
 
-    # Step 13: define per-source execution observability.
+    # Step 18: define per-source execution observability.
     __tablename__ = "pipeline_source_runs"
 
     __table_args__ = (

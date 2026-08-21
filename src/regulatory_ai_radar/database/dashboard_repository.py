@@ -8,6 +8,7 @@ from sqlalchemy.orm import Session
 
 from regulatory_ai_radar.database.models import (
     ArticleAnalysis,
+    ArticleFeedback,
     NewsArticle,
     PipelineRun,
     PipelineSourceRun,
@@ -28,6 +29,8 @@ class DashboardArticle:
     level: str
     is_relevant: bool
     matched_keywords: tuple[str, ...]
+    human_rating: int | None
+    feedback_notes: str | None
 
 
 @dataclass(frozen=True, slots=True)
@@ -71,15 +74,21 @@ class DashboardRepository:
     def list_articles(self) -> list[DashboardArticle]:
         """Return articles and their current relevance analysis."""
 
-        # Step 1: combine news articles with their analyses.
+        # Passo 1: combina notícias, análises e avaliações humanas.
         statement = (
             select(
                 NewsArticle,
                 ArticleAnalysis,
+                ArticleFeedback,
             )
             .outerjoin(
                 ArticleAnalysis,
                 ArticleAnalysis.article_id
+                == NewsArticle.id,
+            )
+            .outerjoin(
+                ArticleFeedback,
+                ArticleFeedback.article_id
                 == NewsArticle.id,
             )
             .order_by(
@@ -93,8 +102,8 @@ class DashboardRepository:
 
         dashboard_articles: list[DashboardArticle] = []
 
-        # Step 2: convert database rows into dashboard data.
-        for article, analysis in rows:
+        # Passo 2: converte as linhas em dados estáveis do dashboard.
+        for article, analysis, feedback in rows:
             dashboard_article = DashboardArticle(
                 id=article.id,
                 source=article.source,
@@ -124,13 +133,23 @@ class DashboardRepository:
                     if analysis
                     else ()
                 ),
+                human_rating=(
+                    feedback.human_rating
+                    if feedback
+                    else None
+                ),
+                feedback_notes=(
+                    feedback.notes
+                    if feedback
+                    else None
+                ),
             )
 
             dashboard_articles.append(
                 dashboard_article
             )
 
-        # Step 3: return data without exposing ORM objects.
+        # Passo 3: retorna os dados sem expor objetos do SQLAlchemy.
         return dashboard_articles
 
     def get_latest_pipeline_run(

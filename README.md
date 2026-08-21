@@ -52,6 +52,8 @@ The project aims to:
 - Filters by source, level, minimum score, relevance, and text
 - Dynamic metrics and ranked publication cards
 - Links to original official publications
+- Human relevance feedback from one to five stars
+- Optional feedback notes with create-or-update persistence
 - Unified execution of every configured source through one pipeline
 - Independent failure isolation for each source
 - Persistent pipeline and per-source execution history
@@ -357,7 +359,9 @@ The dashboard provides:
 - relevant-only selection;
 - text search;
 - ranked regulatory publication cards;
-- links to original official publications.
+- links to original official publications;
+- one-to-five-star human relevance ratings;
+- optional feedback notes that can be created or updated without duplication.
 
 To stop the dashboard, return to the terminal and press:
 
@@ -643,7 +647,7 @@ This deterministic score provides an objective and explainable baseline for futu
 
 ### Dashboard architecture
 
-The Streamlit dashboard reads the local SQLite database through a dedicated read-only repository.
+The Streamlit dashboard reads the local SQLite database through a dedicated query repository and writes only explicit human feedback through a separate feedback repository.
 
 Collection, analysis, and visualization remain separate operations:
 
@@ -663,9 +667,13 @@ Analysis persistence
 Pipeline execution persistence and monitoring
     ↓
 Dashboard visualization
+    ↓
+Human rating and optional note
+    ↓
+Feedback persistence
 ```
 
-The dashboard does not perform collection or modify relevance scores.
+The dashboard does not perform collection or modify deterministic relevance scores. Its only write operation is the explicit human feedback submitted by the user.
 
 ### Database
 
@@ -681,10 +689,11 @@ The database contains:
 
 - `news_articles`: normalized publications from every source;
 - `article_analyses`: relevance scores and supporting evidence;
+- `article_feedback`: one current one-to-five-star human rating and optional note per publication;
 - `pipeline_runs`: overall status, totals, timestamps, and errors for each pipeline run;
 - `pipeline_source_runs`: status, duration, collection totals, duplicate totals, and errors for each source execution.
 
-Publication URLs are unique and prevent duplicate records. Each publication has one current analysis that is updated whenever the analysis script runs again.
+Publication URLs are unique and prevent duplicate records. Each publication has one current analysis and, when rated, one current human feedback record. Repeated feedback submissions update the existing record instead of creating duplicates.
 
 The database file is excluded from Git.
 
@@ -717,6 +726,9 @@ The database file is excluded from Git.
 - [x] Pipeline monitoring in the dashboard
 - [x] Daily automated execution at 08:00 on Windows
 - [x] Hidden scheduled execution and local log generation
+- [x] One-to-five-star human relevance feedback
+- [x] Optional feedback notes with duplicate-free updates
+- [x] Automated feedback repository and dashboard query tests
 - [ ] Additional international regulatory sources
 - [ ] AI-assisted classification
 - [ ] Cloud deployment
@@ -786,6 +798,8 @@ O projeto busca:
 - Filtros por fonte, nível, score, relevância e texto
 - Indicadores dinâmicos e cartões de publicações
 - Links para publicações oficiais
+- Avaliação humana de relevância com uma a cinco estrelas
+- Observação opcional com persistência por criação ou atualização
 - Execução unificada de todas as fontes configuradas em um único pipeline
 - Isolamento independente de falhas por fonte
 - Histórico persistente das execuções gerais e de cada fonte
@@ -1082,7 +1096,9 @@ Ele oferece:
 - opção para exibir somente publicações relevantes;
 - pesquisa textual;
 - cartões ordenados pelo score;
-- links para as publicações originais.
+- links para as publicações originais;
+- avaliação humana de relevância com uma a cinco estrelas;
+- observação opcional que pode ser criada ou atualizada sem duplicidade.
 
 Para encerrar:
 
@@ -1299,9 +1315,13 @@ Persistência das análises
 Persistência e monitoramento das execuções do pipeline
     ↓
 Dashboard
+    ↓
+Avaliação humana e observação opcional
+    ↓
+Persistência do feedback
 ```
 
-A interface não executa coletas nem modifica os scores.
+A interface não executa coletas nem modifica os scores determinísticos. Sua única operação de escrita é o feedback humano enviado explicitamente pelo usuário.
 
 ### Banco de dados
 
@@ -1315,10 +1335,11 @@ O banco contém:
 
 - `news_articles`: publicações normalizadas;
 - `article_analyses`: scores e evidências;
+- `article_feedback`: uma avaliação humana atual de uma a cinco estrelas e uma observação opcional por publicação;
 - `pipeline_runs`: status geral, totais, horários e erros de cada execução do pipeline;
 - `pipeline_source_runs`: status, duração, totais de coleta, duplicidades e erros de cada fonte.
 
-As URLs são únicas e impedem duplicidades. O banco local não é enviado ao Git.
+As URLs são únicas e impedem duplicidades. Cada publicação possui no máximo um feedback humano atual; novos envios atualizam o mesmo registro. O banco local não é enviado ao Git.
 
 ### Status
 
@@ -1349,6 +1370,9 @@ As URLs são únicas e impedem duplicidades. O banco local não é enviado ao Gi
 - [x] Monitoramento do pipeline no dashboard
 - [x] Execução automática diária às 08:00 no Windows
 - [x] Execução agendada oculta e geração de logs locais
+- [x] Avaliação humana de relevância com uma a cinco estrelas
+- [x] Observações opcionais com atualização sem duplicidade
+- [x] Testes automatizados do repositório de feedback e da consulta do dashboard
 - [ ] Outras fontes internacionais
 - [ ] Classificação assistida por IA
 - [ ] Publicação em nuvem
