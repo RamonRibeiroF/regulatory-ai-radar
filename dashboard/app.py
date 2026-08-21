@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import date, datetime
 
 import streamlit as st
 
@@ -64,6 +64,8 @@ def filter_articles(
     selected_levels: list[str],
     minimum_score: int,
     minimum_impact: int,
+    data_inicial: date,
+    data_final: date,
     relevant_only: bool,
     search_query: str,
 ) -> list[DashboardArticle]:
@@ -97,6 +99,14 @@ def filter_articles(
         if (article.impact_score or 0) < minimum_impact:
             continue
 
+        # Passo 4: mantém somente publicações dentro do período escolhido.
+        if article.published_at is None:
+            continue
+
+        data_publicacao = article.published_at.date()
+        if not data_inicial <= data_publicacao <= data_final:
+            continue
+
         if relevant_only and not article.is_relevant:
             continue
 
@@ -111,7 +121,7 @@ def filter_articles(
             article
         )
 
-    # Passo 4: ordena por relevância e usa impacto como desempate.
+    # Passo 5: ordena por relevância e usa impacto como desempate.
     return sorted(
         filtered_articles,
         key=lambda article: (
@@ -200,7 +210,7 @@ def render_pipeline_monitoring(
         st.dataframe(
             source_rows,
             hide_index=True,
-            use_container_width=True,
+            width="stretch",
         )
 
         failed_source_runs = [
@@ -481,6 +491,35 @@ def main() -> None:
         value=0,
     )
 
+    # Passo 13: define o intervalo disponível a partir dos dados reais.
+    datas_publicacao = [
+        article.published_at.date()
+        for article in articles
+        if article.published_at is not None
+    ]
+    menor_data = min(datas_publicacao)
+    maior_data = max(datas_publicacao)
+
+    intervalo_datas = st.sidebar.date_input(
+        "Publication period",
+        value=(menor_data, maior_data),
+        min_value=menor_data,
+        max_value=maior_data,
+        format="YYYY-MM-DD",
+    )
+
+    # Passo 14: durante a seleção parcial, usa a mesma data nos dois limites.
+    if isinstance(intervalo_datas, (tuple, list)):
+        data_inicial = intervalo_datas[0]
+        data_final = (
+            intervalo_datas[1]
+            if len(intervalo_datas) > 1
+            else intervalo_datas[0]
+        )
+    else:
+        data_inicial = intervalo_datas
+        data_final = intervalo_datas
+
     relevant_only = st.sidebar.checkbox(
         "Relevant articles only",
         value=False,
@@ -497,6 +536,8 @@ def main() -> None:
         selected_levels=selected_levels,
         minimum_score=minimum_score,
         minimum_impact=minimum_impact,
+        data_inicial=data_inicial,
+        data_final=data_final,
         relevant_only=relevant_only,
         search_query=search_query,
     )
