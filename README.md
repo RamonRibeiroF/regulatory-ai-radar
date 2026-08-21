@@ -11,8 +11,9 @@ Artificial Intelligence, governance, risk, data protection, and
 financial-sector regulation.
 
 The application collects publications from regulatory and institutional
-sources, stores normalized information, and calculates an auditable
-regulatory relevance score.
+sources, stores normalized information, calculates an auditable
+regulatory relevance score, and presents the results in an interactive
+dashboard.
 
 ### Objective
 
@@ -40,6 +41,10 @@ The project aims to:
 - Ranking from highest to lowest relevance
 - Persistence and updating of article analyses
 - Automated unit tests for the scoring rules
+- Interactive Streamlit dashboard
+- Filters by source, relevance level, minimum score, and text
+- Dynamic metrics and ranked regulatory news cards
+- Links to the original regulatory publications
 
 ### Planned sources
 
@@ -59,14 +64,17 @@ The project aims to:
 - Identification of impacts on financial institutions
 - Automated summaries
 - Detection of similar publications
-- Monitoring dashboard
 - Regulatory change history
 - Daily automated collection
+- Alerts and periodic regulatory reports
+- Cloud deployment
 
 ### Project structure
 
 ```text
 regulatory-ai-radar
+├── dashboard
+│   └── app.py
 ├── scripts
 │   ├── analyze_articles.py
 │   ├── list_articles.py
@@ -83,6 +91,7 @@ regulatory-ai-radar
 │       │   ├── __init__.py
 │       │   ├── analysis_repository.py
 │       │   ├── base.py
+│       │   ├── dashboard_repository.py
 │       │   ├── models.py
 │       │   ├── repository.py
 │       │   └── session.py
@@ -104,6 +113,7 @@ to Git.
 - Python 3.12 or later
 - Git
 - Internet connection for news collection
+- Modern web browser for the dashboard
 
 ### Installation
 
@@ -176,10 +186,41 @@ This script:
 5. stores or updates the analysis;
 6. ranks the articles from highest to lowest score.
 
+#### Launch the dashboard
+
+```powershell
+python -m streamlit run dashboard\app.py
+```
+
+This command starts the local dashboard. It is normally available at:
+
+```text
+http://localhost:8501
+```
+
+The dashboard provides:
+
+- total and filtered article metrics;
+- number of relevant articles;
+- number of high-relevance articles;
+- average relevance score;
+- filters by source and relevance level;
+- minimum score selection;
+- relevant-only selection;
+- text search;
+- ranked regulatory news cards;
+- links to original publications.
+
+To stop the local dashboard server, return to the terminal and press:
+
+```text
+Ctrl + C
+```
+
 #### Validate Python files
 
 ```powershell
-python -m compileall src scripts tests
+python -m compileall src scripts tests dashboard
 ```
 
 This command checks the project files for syntax and indentation errors.
@@ -214,8 +255,33 @@ The relevance levels are:
 | 30–59 | Medium | Yes |
 | 60–100 | High | Yes |
 
-The deterministic score will provide an objective baseline for future
-Artificial Intelligence analysis.
+The deterministic score provides an objective and explainable baseline
+for future Artificial Intelligence analysis.
+
+### Dashboard
+
+The Streamlit dashboard reads the local SQLite database through a
+dedicated read-only repository.
+
+The interface does not execute news collection or modify relevance
+scores. Collection and analysis remain separate operations.
+
+This separation keeps the responsibilities clear:
+
+```text
+Collectors
+    ↓
+News persistence
+    ↓
+Relevance analysis
+    ↓
+Analysis persistence
+    ↓
+Dashboard visualization
+```
+
+Dashboard data is cached for a short period to reduce unnecessary
+database queries while keeping the interface updated.
 
 ### Database
 
@@ -238,6 +304,8 @@ Article URLs are unique and prevent duplicate news records. Each article
 has one current analysis, which is updated when the scoring script runs
 again.
 
+The database file is local and is excluded from Git.
+
 ### Status
 
 🚧 Under development.
@@ -252,10 +320,11 @@ again.
 - [x] Deterministic relevance ranking
 - [x] Analysis persistence
 - [x] Automated scoring tests
+- [x] Interactive dashboard
 - [ ] Additional regulatory sources
 - [ ] Artificial Intelligence classification
-- [ ] Dashboard
 - [ ] Daily automation
+- [ ] Cloud deployment
 
 ### Technologies
 
@@ -264,6 +333,7 @@ again.
 - Requests
 - SQLAlchemy
 - SQLite
+- Streamlit
 - Git
 
 ---
@@ -277,8 +347,9 @@ ao acompanhamento de Inteligência Artificial, governança, riscos,
 proteção de dados e regulação do setor financeiro.
 
 A aplicação coleta publicações de fontes regulatórias e institucionais,
-armazena informações normalizadas e calcula um score auditável de
-relevância regulatória.
+armazena informações normalizadas, calcula um score auditável de
+relevância regulatória e apresenta os resultados em um dashboard
+interativo.
 
 ### Objetivo
 
@@ -307,6 +378,10 @@ O projeto tem como objetivos:
 - Ranking da maior para a menor relevância
 - Persistência e atualização das análises
 - Testes unitários automatizados para as regras de pontuação
+- Dashboard interativo com Streamlit
+- Filtros por fonte, nível de relevância, score mínimo e texto
+- Indicadores dinâmicos e cartões de notícias ranqueadas
+- Links para as publicações regulatórias originais
 
 ### Fontes planejadas
 
@@ -326,14 +401,17 @@ O projeto tem como objetivos:
 - Identificação de impactos para instituições financeiras
 - Resumos automatizados
 - Detecção de publicações semelhantes
-- Dashboard de acompanhamento
 - Histórico de mudanças regulatórias
 - Coleta diária automatizada
+- Alertas e relatórios regulatórios periódicos
+- Publicação em ambiente de nuvem
 
 ### Estrutura do projeto
 
 ```text
 regulatory-ai-radar
+├── dashboard
+│   └── app.py
 ├── scripts
 │   ├── analyze_articles.py
 │   ├── list_articles.py
@@ -350,6 +428,7 @@ regulatory-ai-radar
 │       │   ├── __init__.py
 │       │   ├── analysis_repository.py
 │       │   ├── base.py
+│       │   ├── dashboard_repository.py
 │       │   ├── models.py
 │       │   ├── repository.py
 │       │   └── session.py
@@ -370,6 +449,7 @@ inicializa o banco. Seu conteúdo não é enviado ao Git.
 - Python 3.12 ou superior
 - Git
 - Conexão com a internet para realizar a coleta
+- Navegador moderno para acessar o dashboard
 
 ### Instalação
 
@@ -442,10 +522,43 @@ Esse script:
 5. armazena ou atualiza a análise;
 6. ordena as notícias da maior para a menor pontuação.
 
+#### Iniciar o dashboard
+
+```powershell
+python -m streamlit run dashboard\app.py
+```
+
+Esse comando inicia o dashboard local. Normalmente, ele estará
+disponível em:
+
+```text
+http://localhost:8501
+```
+
+O dashboard oferece:
+
+- total de notícias encontradas pelos filtros;
+- quantidade de notícias relevantes;
+- quantidade de notícias com relevância alta;
+- média dos scores;
+- filtros por fonte e nível de relevância;
+- seleção de score mínimo;
+- opção para exibir somente notícias relevantes;
+- pesquisa textual;
+- cartões de notícias ordenados pelo score;
+- links para as publicações originais.
+
+Para encerrar o servidor local do dashboard, retorne ao terminal e
+pressione:
+
+```text
+Ctrl + C
+```
+
 #### Validar os arquivos Python
 
 ```powershell
-python -m compileall src scripts tests
+python -m compileall src scripts tests dashboard
 ```
 
 Esse comando verifica erros de sintaxe e indentação nos arquivos do
@@ -481,8 +594,33 @@ As faixas de relevância são:
 | 30–59 | Média | Sim |
 | 60–100 | Alta | Sim |
 
-O score determinístico servirá como base objetiva para uma futura
-análise com Inteligência Artificial.
+O score determinístico fornece uma base objetiva e explicável para uma
+futura análise com Inteligência Artificial.
+
+### Dashboard
+
+O dashboard do Streamlit consulta o banco SQLite local por meio de um
+repositório dedicado exclusivamente à leitura.
+
+A interface não executa a coleta de notícias nem modifica os scores de
+relevância. A coleta e a análise permanecem como operações separadas.
+
+Essa separação mantém claras as responsabilidades:
+
+```text
+Coletores
+    ↓
+Persistência das notícias
+    ↓
+Análise de relevância
+    ↓
+Persistência das análises
+    ↓
+Visualização no dashboard
+```
+
+Os dados do dashboard são mantidos em cache por um curto período para
+reduzir consultas desnecessárias e manter a interface atualizada.
 
 ### Banco de dados
 
@@ -505,6 +643,8 @@ As URLs das notícias são únicas e impedem registros duplicados. Cada
 notícia possui uma análise atual, que é atualizada quando o script de
 pontuação é executado novamente.
 
+O arquivo do banco é local e não é enviado ao Git.
+
 ### Status
 
 🚧 Em desenvolvimento.
@@ -519,10 +659,11 @@ pontuação é executado novamente.
 - [x] Ranking determinístico de relevância
 - [x] Persistência das análises
 - [x] Testes automatizados do score
+- [x] Dashboard interativo
 - [ ] Outras fontes regulatórias
 - [ ] Classificação com Inteligência Artificial
-- [ ] Dashboard
 - [ ] Automação diária
+- [ ] Publicação em ambiente de nuvem
 
 ### Tecnologias
 
@@ -531,4 +672,5 @@ pontuação é executado novamente.
 - Requests
 - SQLAlchemy
 - SQLite
+- Streamlit
 - Git
