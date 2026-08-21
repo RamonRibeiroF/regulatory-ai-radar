@@ -8,6 +8,9 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from regulatory_ai_radar.analysis import RelevanceAnalyzer
+from regulatory_ai_radar.analysis.local_classifier import (
+    ClassificadorLocalDeterministico,
+)
 from regulatory_ai_radar.collectors.anpd import ANPDCollector
 from regulatory_ai_radar.collectors.bcb import BCBCollector
 from regulatory_ai_radar.collectors.bis import BISCollector
@@ -23,7 +26,11 @@ from regulatory_ai_radar.database.analysis_repository import (
 )
 from regulatory_ai_radar.database.models import (
     ArticleAnalysis,
+    ClassificacaoLocalArtigo,
     NewsArticle,
+)
+from regulatory_ai_radar.database.local_classification_repository import (
+    RepositorioClassificacaoLocal,
 )
 from regulatory_ai_radar.database.pipeline_repository import (
     PipelineRepository,
@@ -273,12 +280,47 @@ class PipelineRunner:
                 f"ANALYSIS: {exception}"
             )
 
+        # Passo 14: classifica localmente análises ainda sem estrelas.
+        try:
+            with self.session_factory() as session:
+                classificacoes_pendentes = session.execute(
+                    select(ArticleAnalysis)
+                    .outerjoin(
+                        ClassificacaoLocalArtigo,
+                        ClassificacaoLocalArtigo.artigo_id
+                        == ArticleAnalysis.article_id,
+                    )
+                    .where(ClassificacaoLocalArtigo.id.is_(None))
+                    .order_by(ArticleAnalysis.article_id)
+                ).scalars().all()
+
+                classificador_local = ClassificadorLocalDeterministico()
+                repositorio_local = RepositorioClassificacaoLocal(session)
+
+                for analise in classificacoes_pendentes:
+                    resultado_local = classificador_local.classificar(
+                        pontuacao=analise.score,
+                        palavras_chave=tuple(analise.matched_keywords),
+                        categorias=tuple(analise.matched_categories),
+                    )
+                    repositorio_local.salvar(
+                        artigo_id=analise.article_id,
+                        resultado=resultado_local,
+                        nome_modelo=classificador_local.nome_modelo,
+                        versao_criterios=(
+                            classificador_local.versao_criterios
+                        ),
+                    )
+
+        except Exception as exception:
+            error_messages.append(f"LOCAL_CLASSIFICATION: {exception}")
+
         error_count = len(error_messages)
         successful_sources = (
             len(self.collectors) - failed_sources
         )
 
-        # Step 14: determine the final pipeline status.
+        # Step 15: determine the final pipeline status.
         if error_count == 0:
             pipeline_status = "success"
         elif successful_sources == 0:
@@ -302,7 +344,7 @@ class PipelineRunner:
             else None
         )
 
-        # Step 15: finish and persist the main pipeline execution.
+        # Step 16: finish and persist the main pipeline execution.
         with self.session_factory() as session:
             pipeline_repository = PipelineRepository(session)
             pipeline_repository.finish_pipeline(
@@ -312,7 +354,7 @@ class PipelineRunner:
                 error_message=combined_error_message,
             )
 
-        # Step 16: return a structured execution summary.
+        # Step 17: return a structured execution summary.
         return PipelineExecutionResult(
             pipeline_run_id=pipeline_run_id,
             status=pipeline_status,

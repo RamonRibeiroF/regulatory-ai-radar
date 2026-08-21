@@ -9,6 +9,7 @@ from sqlalchemy.pool import StaticPool
 from regulatory_ai_radar.database.base import Base
 from regulatory_ai_radar.database.models import (
     ArticleAnalysis,
+    ClassificacaoLocalArtigo,
     PipelineRun,
     PipelineSourceRun,
 )
@@ -152,6 +153,9 @@ class PipelineRunnerTests(unittest.TestCase):
             analysis = session.scalar(
                 select(ArticleAnalysis)
             )
+            classificacao_local = session.scalar(
+                select(ClassificacaoLocalArtigo)
+            )
 
         self.assertIsNotNone(pipeline_run)
         self.assertEqual(
@@ -164,6 +168,8 @@ class PipelineRunnerTests(unittest.TestCase):
             "success",
         )
         self.assertIsNotNone(analysis)
+        self.assertIsNotNone(classificacao_local)
+        self.assertEqual(classificacao_local.avaliacao_estrelas, 5)
 
     def test_pipeline_skips_duplicate_articles(self) -> None:
         # Step 11: configure a collector that always returns one URL.

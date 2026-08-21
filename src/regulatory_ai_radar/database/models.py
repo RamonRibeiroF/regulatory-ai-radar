@@ -152,28 +152,31 @@ class ArticleAnalysis(Base):
     )
 
 
-class ArticleFeedback(Base):
-    """Representa o feedback de relevância dado pelo usuário."""
+class ClassificacaoLocalArtigo(Base):
+    """Armazena a classificação local determinística de uma notícia."""
 
-    # Passo 12: define a tabela e as regras de avaliação.
-    __tablename__ = "article_feedback"
+    # Passo 12: mantém o nome físico para compatibilidade com o SQLite atual.
+    __tablename__ = "classificacoes_ia_artigos"
 
     __table_args__ = (
         CheckConstraint(
-            "human_rating >= 1 AND human_rating <= 5",
-            name="ck_article_feedback_human_rating",
+            "avaliacao_estrelas >= 1 AND avaliacao_estrelas <= 5",
+            name="ck_classificacoes_ia_avaliacao_estrelas",
+        ),
+        CheckConstraint(
+            "confianca_percentual >= 0 AND confianca_percentual <= 100",
+            name="ck_classificacoes_ia_confianca_percentual",
         ),
     )
 
-    # Passo 13: cria o identificador principal do feedback.
+    # Passo 13: cria um único resultado local atual para cada notícia.
     id: Mapped[int] = mapped_column(
         Integer,
         primary_key=True,
         autoincrement=True,
     )
 
-    # Passo 14: associa um único feedback atual a uma notícia.
-    article_id: Mapped[int] = mapped_column(
+    artigo_id: Mapped[int] = mapped_column(
         ForeignKey(
             "news_articles.id",
             ondelete="CASCADE",
@@ -183,25 +186,46 @@ class ArticleFeedback(Base):
         index=True,
     )
 
-    # Passo 15: armazena a avaliação e a explicação opcional.
-    human_rating: Mapped[int] = mapped_column(
+    # Passo 14: persiste estrelas, evidência e justificativa auditável.
+    avaliacao_estrelas: Mapped[int] = mapped_column(
         Integer,
         nullable=False,
     )
 
-    notes: Mapped[str | None] = mapped_column(
-        Text,
-        nullable=True,
+    confianca_percentual: Mapped[int] = mapped_column(
+        Integer,
+        nullable=False,
     )
 
-    # Passo 16: registra os horários de criação e modificação.
-    created_at: Mapped[datetime] = mapped_column(
+    justificativa: Mapped[str] = mapped_column(
+        Text,
+        nullable=False,
+    )
+
+    categorias: Mapped[list[str]] = mapped_column(
+        JSON,
+        nullable=False,
+    )
+
+    # Passo 15: identifica o algoritmo e os critérios responsáveis.
+    nome_modelo: Mapped[str] = mapped_column(
+        String(100),
+        nullable=False,
+    )
+
+    versao_criterios: Mapped[str] = mapped_column(
+        String(50),
+        nullable=False,
+    )
+
+    # Passo 16: registra criação e última atualização.
+    criado_em: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         default=utc_now,
         nullable=False,
     )
 
-    updated_at: Mapped[datetime] = mapped_column(
+    atualizado_em: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         default=utc_now,
         onupdate=utc_now,

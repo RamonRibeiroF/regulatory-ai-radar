@@ -10,9 +10,6 @@ from regulatory_ai_radar.database.dashboard_repository import (
     DashboardRepository,
     DashboardSourceRun,
 )
-from regulatory_ai_radar.database.feedback_repository import (
-    ArticleFeedbackRepository,
-)
 from regulatory_ai_radar.database.session import (
     SessionFactory,
     initialize_database,
@@ -58,26 +55,6 @@ def format_datetime(
     return date_value.strftime(
         "%Y-%m-%d %H:%M:%S"
     )
-
-
-def salvar_feedback(
-    id_artigo: int,
-    avaliacao_humana: int,
-    observacao: str | None,
-) -> None:
-    """Salva a avaliação humana e invalida os dados em cache."""
-
-    # Passo 3: grava a avaliação usando uma transação isolada.
-    with SessionFactory() as sessao:
-        repositorio = ArticleFeedbackRepository(sessao)
-        repositorio.save(
-            article_id=id_artigo,
-            human_rating=avaliacao_humana,
-            notes=observacao,
-        )
-
-    # Passo 4: força a próxima leitura a consultar o SQLite atualizado.
-    load_dashboard_data.clear()
 
 
 # Step 3: apply the filters selected in the sidebar.
@@ -368,48 +345,26 @@ def render_article(
         )
 
         st.divider()
-        st.markdown(
-            "**Your relevance rating**"
-        )
+        st.markdown("**Local classification**")
 
-        # Passo 9: converte 1–5 estrelas do banco para 0–4 do Streamlit.
-        avaliacao_inicial = (
-            article.human_rating - 1
-            if article.human_rating is not None
-            else None
-        )
-        indice_estrelas = st.feedback(
-            "stars",
-            key=f"estrelas_artigo_{article.id}",
-            default=avaliacao_inicial,
-        )
-
-        observacao = st.text_area(
-            "Optional note",
-            value=article.feedback_notes or "",
-            key=f"observacao_artigo_{article.id}",
-            placeholder="Why is this article relevant to you?",
-        )
-
-        if st.button(
-            "Save rating",
-            key=f"salvar_feedback_artigo_{article.id}",
-        ):
-            if indice_estrelas is None:
-                st.warning(
-                    "Select between one and five stars before saving."
-                )
-            else:
-                # Passo 10: converte 0–4 do Streamlit para 1–5 do banco.
-                avaliacao_humana = indice_estrelas + 1
-                salvar_feedback(
-                    id_artigo=article.id,
-                    avaliacao_humana=avaliacao_humana,
-                    observacao=observacao,
-                )
-                st.success(
-                    f"Rating saved: {avaliacao_humana}/5 stars."
-                )
+        # Passo 9: exibe somente o resultado calculado localmente.
+        if article.local_rating is None:
+            st.caption("Local classification not available.")
+        else:
+            estrelas = (
+                "★" * article.local_rating
+                + "☆" * (5 - article.local_rating)
+            )
+            colunas_locais = st.columns(2)
+            colunas_locais[0].metric(
+                "Relevance stars",
+                estrelas,
+            )
+            colunas_locais[1].metric(
+                "Deterministic evidence",
+                f"{article.local_evidence}/100",
+            )
+            st.caption(article.local_justification or "")
 
 
 def main() -> None:

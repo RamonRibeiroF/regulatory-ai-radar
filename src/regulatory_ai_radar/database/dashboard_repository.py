@@ -8,7 +8,7 @@ from sqlalchemy.orm import Session
 
 from regulatory_ai_radar.database.models import (
     ArticleAnalysis,
-    ArticleFeedback,
+    ClassificacaoLocalArtigo,
     NewsArticle,
     PipelineRun,
     PipelineSourceRun,
@@ -29,8 +29,9 @@ class DashboardArticle:
     level: str
     is_relevant: bool
     matched_keywords: tuple[str, ...]
-    human_rating: int | None
-    feedback_notes: str | None
+    local_rating: int | None
+    local_evidence: int | None
+    local_justification: str | None
 
 
 @dataclass(frozen=True, slots=True)
@@ -74,12 +75,12 @@ class DashboardRepository:
     def list_articles(self) -> list[DashboardArticle]:
         """Return articles and their current relevance analysis."""
 
-        # Passo 1: combina notícias, análises e avaliações humanas.
+        # Passo 1: combina notícias, análises e classificações locais.
         statement = (
             select(
                 NewsArticle,
                 ArticleAnalysis,
-                ArticleFeedback,
+                ClassificacaoLocalArtigo,
             )
             .outerjoin(
                 ArticleAnalysis,
@@ -87,8 +88,8 @@ class DashboardRepository:
                 == NewsArticle.id,
             )
             .outerjoin(
-                ArticleFeedback,
-                ArticleFeedback.article_id
+                ClassificacaoLocalArtigo,
+                ClassificacaoLocalArtigo.artigo_id
                 == NewsArticle.id,
             )
             .order_by(
@@ -103,7 +104,7 @@ class DashboardRepository:
         dashboard_articles: list[DashboardArticle] = []
 
         # Passo 2: converte as linhas em dados estáveis do dashboard.
-        for article, analysis, feedback in rows:
+        for article, analysis, classificacao_local in rows:
             dashboard_article = DashboardArticle(
                 id=article.id,
                 source=article.source,
@@ -133,14 +134,19 @@ class DashboardRepository:
                     if analysis
                     else ()
                 ),
-                human_rating=(
-                    feedback.human_rating
-                    if feedback
+                local_rating=(
+                    classificacao_local.avaliacao_estrelas
+                    if classificacao_local
                     else None
                 ),
-                feedback_notes=(
-                    feedback.notes
-                    if feedback
+                local_evidence=(
+                    classificacao_local.confianca_percentual
+                    if classificacao_local
+                    else None
+                ),
+                local_justification=(
+                    classificacao_local.justificativa
+                    if classificacao_local
                     else None
                 ),
             )

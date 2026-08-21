@@ -12,13 +12,13 @@ from regulatory_ai_radar.database.dashboard_repository import (
     DashboardRepository,
 )
 from regulatory_ai_radar.database.models import (
-    ArticleFeedback,
+    ClassificacaoLocalArtigo,
     NewsArticle,
 )
 
 
 class RepositorioDashboardTestes(unittest.TestCase):
-    """Testa os dados de feedback disponibilizados ao dashboard."""
+    """Testa a classificação local disponibilizada ao dashboard."""
 
     def setUp(self) -> None:
         # Passo 1: cria um banco SQLite isolado em memória.
@@ -61,14 +61,18 @@ class RepositorioDashboardTestes(unittest.TestCase):
         self.sessao.commit()
         return noticia
 
-    def test_retorna_estrelas_e_observacao_da_noticia_avaliada(self) -> None:
-        # Passo 3: associa uma avaliação humana à notícia.
+    def test_retorna_classificacao_local(self) -> None:
+        # Passo 3: associa uma classificação local à notícia.
         noticia = self.criar_noticia("avaliada")
         self.sessao.add(
-            ArticleFeedback(
-                article_id=noticia.id,
-                human_rating=5,
-                notes="Prioridade regulatória elevada.",
+            ClassificacaoLocalArtigo(
+                artigo_id=noticia.id,
+                avaliacao_estrelas=5,
+                confianca_percentual=70,
+                justificativa="Pontuação determinística 70/100.",
+                categorias=["inteligência artificial"],
+                nome_modelo="classificador-local-deterministico",
+                versao_criterios="1.0",
             )
         )
         self.sessao.commit()
@@ -76,21 +80,19 @@ class RepositorioDashboardTestes(unittest.TestCase):
         artigos = self.repositorio.list_articles()
 
         self.assertEqual(len(artigos), 1)
-        self.assertEqual(artigos[0].human_rating, 5)
-        self.assertEqual(
-            artigos[0].feedback_notes,
-            "Prioridade regulatória elevada.",
-        )
+        self.assertEqual(artigos[0].local_rating, 5)
+        self.assertEqual(artigos[0].local_evidence, 70)
+        self.assertIn("70/100", artigos[0].local_justification)
 
-    def test_mantem_noticia_sem_avaliacao_na_consulta(self) -> None:
-        # Passo 4: consulta uma notícia que ainda não recebeu feedback.
+    def test_mantem_noticia_sem_classificacao_na_consulta(self) -> None:
+        # Passo 4: consulta uma notícia sem classificação local.
         self.criar_noticia("sem-avaliacao")
 
         artigos = self.repositorio.list_articles()
 
         self.assertEqual(len(artigos), 1)
-        self.assertIsNone(artigos[0].human_rating)
-        self.assertIsNone(artigos[0].feedback_notes)
+        self.assertIsNone(artigos[0].local_rating)
+        self.assertIsNone(artigos[0].local_evidence)
 
 
 if __name__ == "__main__":

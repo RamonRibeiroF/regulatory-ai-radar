@@ -20,7 +20,7 @@ The project aims to:
 - organize publications from multiple official sources;
 - prevent duplicate records;
 - calculate explainable regulatory relevance scores;
-- support future AI-assisted impact analysis;
+- provide a fully local and auditable relevance classification;
 - provide structured information for dashboards and reports.
 
 ### Current sources
@@ -52,8 +52,8 @@ The project aims to:
 - Filters by source, level, minimum score, relevance, and text
 - Dynamic metrics and ranked publication cards
 - Links to original official publications
-- Human relevance feedback from one to five stars
-- Optional feedback notes with create-or-update persistence
+- Local deterministic relevance classification from one to five stars
+- Auditable classification evidence and justification without external APIs
 - Unified execution of every configured source through one pipeline
 - Independent failure isolation for each source
 - Persistent pipeline and per-source execution history
@@ -69,7 +69,7 @@ All sources planned for the initial multi-source version have been implemented. 
 ### Planned features
 
 - Additional regulatory collectors
-- AI-assisted content classification
+- Refinement of the local deterministic classification rules
 - Identification of impacts on financial institutions
 - Automated summaries
 - Detection of similar publications
@@ -360,8 +360,8 @@ The dashboard provides:
 - text search;
 - ranked regulatory publication cards;
 - links to original official publications;
-- one-to-five-star human relevance ratings;
-- optional feedback notes that can be created or updated without duplication.
+- read-only local relevance classifications from one to five stars;
+- deterministic classification evidence and justification.
 
 To stop the dashboard, return to the terminal and press:
 
@@ -643,11 +643,27 @@ The analyzer:
 | 30–59 | Medium | Yes |
 | 60–100 | High | Yes |
 
-This deterministic score provides an objective and explainable baseline for future AI-assisted analysis.
+This deterministic score provides the objective and explainable basis for the local star classification.
+
+The local classifier converts the deterministic score into a read-only star rating:
+
+| Score | Local rating |
+|---:|---:|
+| 0–14 | 1 star |
+| 15–29 | 2 stars |
+| 30–44 | 3 stars |
+| 45–59 | 4 stars |
+| 60–100 | 5 stars |
+
+The classifier runs locally, makes no network request, uses no paid API, and stores an auditable justification for each result. Existing analyses can be classified with:
+
+```powershell
+python scripts\classify_articles_local.py
+```
 
 ### Dashboard architecture
 
-The Streamlit dashboard reads the local SQLite database through a dedicated query repository and writes only explicit human feedback through a separate feedback repository.
+The Streamlit dashboard reads the local SQLite database through a dedicated query repository. Local star classifications are read-only in the interface.
 
 Collection, analysis, and visualization remain separate operations:
 
@@ -664,16 +680,16 @@ Relevance analysis
     ↓
 Analysis persistence
     ↓
+Local five-star classification
+    ↓
+Local classification persistence
+    ↓
 Pipeline execution persistence and monitoring
     ↓
 Dashboard visualization
-    ↓
-Human rating and optional note
-    ↓
-Feedback persistence
 ```
 
-The dashboard does not perform collection or modify deterministic relevance scores. Its only write operation is the explicit human feedback submitted by the user.
+The dashboard is read-only: it does not perform collection or modify deterministic relevance scores and classifications.
 
 ### Database
 
@@ -689,11 +705,11 @@ The database contains:
 
 - `news_articles`: normalized publications from every source;
 - `article_analyses`: relevance scores and supporting evidence;
-- `article_feedback`: one current one-to-five-star human rating and optional note per publication;
+- `classificacoes_ia_artigos`: one current local five-star classification, deterministic evidence, and justification per publication; the physical table name is retained for SQLite compatibility;
 - `pipeline_runs`: overall status, totals, timestamps, and errors for each pipeline run;
 - `pipeline_source_runs`: status, duration, collection totals, duplicate totals, and errors for each source execution.
 
-Publication URLs are unique and prevent duplicate records. Each publication has one current analysis and, when rated, one current human feedback record. Repeated feedback submissions update the existing record instead of creating duplicates.
+Publication URLs are unique and prevent duplicate records. Each analyzed publication has one current local classification. Repeated local classification updates the existing record instead of creating duplicates.
 
 The database file is excluded from Git.
 
@@ -726,11 +742,11 @@ The database file is excluded from Git.
 - [x] Pipeline monitoring in the dashboard
 - [x] Daily automated execution at 08:00 on Windows
 - [x] Hidden scheduled execution and local log generation
-- [x] One-to-five-star human relevance feedback
-- [x] Optional feedback notes with duplicate-free updates
-- [x] Automated feedback repository and dashboard query tests
+- [x] Local deterministic classification from one to five stars
+- [x] Auditable local evidence and justification without external APIs
+- [x] Automated local classifier, repository, pipeline, and dashboard query tests
 - [ ] Additional international regulatory sources
-- [ ] AI-assisted classification
+- [ ] Refinement of local deterministic classification rules
 - [ ] Cloud deployment
 
 ### Technologies
@@ -766,7 +782,7 @@ O projeto busca:
 - organizar publicações de diferentes fontes oficiais;
 - impedir registros duplicados;
 - calcular scores explicáveis de relevância regulatória;
-- apoiar futuras análises de impacto com IA;
+- fornecer uma classificação de relevância totalmente local e auditável;
 - fornecer informações estruturadas para dashboards e relatórios.
 
 ### Fontes atuais
@@ -798,8 +814,8 @@ O projeto busca:
 - Filtros por fonte, nível, score, relevância e texto
 - Indicadores dinâmicos e cartões de publicações
 - Links para publicações oficiais
-- Avaliação humana de relevância com uma a cinco estrelas
-- Observação opcional com persistência por criação ou atualização
+- Classificação local determinística de relevância com uma a cinco estrelas
+- Evidência e justificativa auditáveis sem APIs externas
 - Execução unificada de todas as fontes configuradas em um único pipeline
 - Isolamento independente de falhas por fonte
 - Histórico persistente das execuções gerais e de cada fonte
@@ -815,7 +831,7 @@ Todas as fontes planejadas para a versão inicial com múltiplas fontes foram im
 ### Funcionalidades planejadas
 
 - Coletores adicionais
-- Classificação de conteúdo assistida por IA
+- Aprimoramento das regras locais de classificação determinística
 - Identificação de impactos para instituições financeiras
 - Resumos automatizados
 - Detecção de publicações semelhantes
@@ -1097,8 +1113,8 @@ Ele oferece:
 - pesquisa textual;
 - cartões ordenados pelo score;
 - links para as publicações originais;
-- avaliação humana de relevância com uma a cinco estrelas;
-- observação opcional que pode ser criada ou atualizada sem duplicidade.
+- classificação local de relevância, somente leitura, com uma a cinco estrelas;
+- evidência e justificativa determinísticas da classificação.
 
 Para encerrar:
 
@@ -1297,6 +1313,22 @@ O analisador:
 | 30–59 | Média | Sim |
 | 60–100 | Alta | Sim |
 
+O classificador local converte o score determinístico em estrelas:
+
+| Score | Classificação local |
+|---:|---:|
+| 0–14 | 1 estrela |
+| 15–29 | 2 estrelas |
+| 30–44 | 3 estrelas |
+| 45–59 | 4 estrelas |
+| 60–100 | 5 estrelas |
+
+O classificador é executado localmente, não faz requisições de rede, não usa API paga e armazena uma justificativa auditável. Para classificar análises existentes:
+
+```powershell
+python scripts\classify_articles_local.py
+```
+
 ### Arquitetura
 
 ```text
@@ -1312,16 +1344,16 @@ Análise de relevância
     ↓
 Persistência das análises
     ↓
+Classificação local com cinco estrelas
+    ↓
+Persistência da classificação local
+    ↓
 Persistência e monitoramento das execuções do pipeline
     ↓
 Dashboard
-    ↓
-Avaliação humana e observação opcional
-    ↓
-Persistência do feedback
 ```
 
-A interface não executa coletas nem modifica os scores determinísticos. Sua única operação de escrita é o feedback humano enviado explicitamente pelo usuário.
+A interface é somente leitura: não executa coletas nem modifica scores e classificações determinísticas.
 
 ### Banco de dados
 
@@ -1335,11 +1367,11 @@ O banco contém:
 
 - `news_articles`: publicações normalizadas;
 - `article_analyses`: scores e evidências;
-- `article_feedback`: uma avaliação humana atual de uma a cinco estrelas e uma observação opcional por publicação;
+- `classificacoes_ia_artigos`: uma classificação local atual com cinco estrelas, evidência determinística e justificativa por publicação; o nome físico da tabela foi mantido por compatibilidade com o SQLite;
 - `pipeline_runs`: status geral, totais, horários e erros de cada execução do pipeline;
 - `pipeline_source_runs`: status, duração, totais de coleta, duplicidades e erros de cada fonte.
 
-As URLs são únicas e impedem duplicidades. Cada publicação possui no máximo um feedback humano atual; novos envios atualizam o mesmo registro. O banco local não é enviado ao Git.
+As URLs são únicas e impedem duplicidades. Cada publicação analisada possui uma classificação local atual; novas execuções atualizam o mesmo registro. O banco local não é enviado ao Git.
 
 ### Status
 
@@ -1370,11 +1402,11 @@ As URLs são únicas e impedem duplicidades. Cada publicação possui no máximo
 - [x] Monitoramento do pipeline no dashboard
 - [x] Execução automática diária às 08:00 no Windows
 - [x] Execução agendada oculta e geração de logs locais
-- [x] Avaliação humana de relevância com uma a cinco estrelas
-- [x] Observações opcionais com atualização sem duplicidade
-- [x] Testes automatizados do repositório de feedback e da consulta do dashboard
+- [x] Classificação local determinística de uma a cinco estrelas
+- [x] Evidência e justificativa locais e auditáveis, sem APIs externas
+- [x] Testes automatizados do classificador, repositório, pipeline e consulta do dashboard
 - [ ] Outras fontes internacionais
-- [ ] Classificação assistida por IA
+- [ ] Aprimoramento das regras locais de classificação determinística
 - [ ] Publicação em nuvem
 
 ### Tecnologias
