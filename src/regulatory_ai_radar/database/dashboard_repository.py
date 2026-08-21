@@ -9,6 +9,7 @@ from sqlalchemy.orm import Session
 from regulatory_ai_radar.database.models import (
     ArticleAnalysis,
     ClassificacaoLocalArtigo,
+    ImpactoRegulatorioArtigo,
     NewsArticle,
     PipelineRun,
     PipelineSourceRun,
@@ -32,6 +33,9 @@ class DashboardArticle:
     local_rating: int | None
     local_evidence: int | None
     local_justification: str | None
+    impact_score: int | None
+    impact_level: str
+    impact_justification: str | None
 
 
 @dataclass(frozen=True, slots=True)
@@ -81,6 +85,7 @@ class DashboardRepository:
                 NewsArticle,
                 ArticleAnalysis,
                 ClassificacaoLocalArtigo,
+                ImpactoRegulatorioArtigo,
             )
             .outerjoin(
                 ArticleAnalysis,
@@ -91,6 +96,10 @@ class DashboardRepository:
                 ClassificacaoLocalArtigo,
                 ClassificacaoLocalArtigo.artigo_id
                 == NewsArticle.id,
+            )
+            .outerjoin(
+                ImpactoRegulatorioArtigo,
+                ImpactoRegulatorioArtigo.artigo_id == NewsArticle.id,
             )
             .order_by(
                 NewsArticle.id
@@ -104,7 +113,7 @@ class DashboardRepository:
         dashboard_articles: list[DashboardArticle] = []
 
         # Passo 2: converte as linhas em dados estáveis do dashboard.
-        for article, analysis, classificacao_local in rows:
+        for article, analysis, classificacao_local, impacto in rows:
             dashboard_article = DashboardArticle(
                 id=article.id,
                 source=article.source,
@@ -147,6 +156,21 @@ class DashboardRepository:
                 local_justification=(
                     classificacao_local.justificativa
                     if classificacao_local
+                    else None
+                ),
+                impact_score=(
+                    impacto.pontuacao_impacto
+                    if impacto
+                    else None
+                ),
+                impact_level=(
+                    impacto.nivel_impacto
+                    if impacto
+                    else "not_analyzed"
+                ),
+                impact_justification=(
+                    impacto.justificativa
+                    if impacto
                     else None
                 ),
             )

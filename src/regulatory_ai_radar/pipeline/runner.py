@@ -11,6 +11,9 @@ from regulatory_ai_radar.analysis import RelevanceAnalyzer
 from regulatory_ai_radar.analysis.local_classifier import (
     ClassificadorLocalDeterministico,
 )
+from regulatory_ai_radar.analysis.impact import (
+    ClassificadorImpactoRegulatorio,
+)
 from regulatory_ai_radar.collectors.anpd import ANPDCollector
 from regulatory_ai_radar.collectors.bcb import BCBCollector
 from regulatory_ai_radar.collectors.bis import BISCollector
@@ -27,7 +30,11 @@ from regulatory_ai_radar.database.analysis_repository import (
 from regulatory_ai_radar.database.models import (
     ArticleAnalysis,
     ClassificacaoLocalArtigo,
+    ImpactoRegulatorioArtigo,
     NewsArticle,
+)
+from regulatory_ai_radar.database.impact_repository import (
+    RepositorioImpactoRegulatorio,
 )
 from regulatory_ai_radar.database.local_classification_repository import (
     RepositorioClassificacaoLocal,
@@ -315,12 +322,50 @@ class PipelineRunner:
         except Exception as exception:
             error_messages.append(f"LOCAL_CLASSIFICATION: {exception}")
 
+        # Passo 15: calcula o impacto ainda ausente sem repetir registros.
+        try:
+            with self.session_factory() as session:
+                impactos_pendentes = session.execute(
+                    select(NewsArticle, ArticleAnalysis)
+                    .join(
+                        ArticleAnalysis,
+                        ArticleAnalysis.article_id == NewsArticle.id,
+                    )
+                    .outerjoin(
+                        ImpactoRegulatorioArtigo,
+                        ImpactoRegulatorioArtigo.artigo_id == NewsArticle.id,
+                    )
+                    .where(ImpactoRegulatorioArtigo.id.is_(None))
+                    .order_by(NewsArticle.id)
+                ).all()
+                classificador_impacto = ClassificadorImpactoRegulatorio()
+                repositorio_impacto = RepositorioImpactoRegulatorio(session)
+
+                for artigo, analise in impactos_pendentes:
+                    resultado_impacto = classificador_impacto.classificar(
+                        titulo=artigo.title,
+                        resumo=artigo.summary,
+                        corpo=artigo.body,
+                        categorias=tuple(analise.matched_categories),
+                    )
+                    repositorio_impacto.salvar(
+                        artigo_id=artigo.id,
+                        resultado=resultado_impacto,
+                        nome_modelo=classificador_impacto.nome_modelo,
+                        versao_criterios=(
+                            classificador_impacto.versao_criterios
+                        ),
+                    )
+
+        except Exception as exception:
+            error_messages.append(f"IMPACT_CLASSIFICATION: {exception}")
+
         error_count = len(error_messages)
         successful_sources = (
             len(self.collectors) - failed_sources
         )
 
-        # Step 15: determine the final pipeline status.
+        # Step 16: determine the final pipeline status.
         if error_count == 0:
             pipeline_status = "success"
         elif successful_sources == 0:
@@ -344,7 +389,7 @@ class PipelineRunner:
             else None
         )
 
-        # Step 16: finish and persist the main pipeline execution.
+        # Step 17: finish and persist the main pipeline execution.
         with self.session_factory() as session:
             pipeline_repository = PipelineRepository(session)
             pipeline_repository.finish_pipeline(
@@ -354,7 +399,7 @@ class PipelineRunner:
                 error_message=combined_error_message,
             )
 
-        # Step 17: return a structured execution summary.
+        # Step 18: return a structured execution summary.
         return PipelineExecutionResult(
             pipeline_run_id=pipeline_run_id,
             status=pipeline_status,

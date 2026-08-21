@@ -1,1423 +1,280 @@
 # Regulatory AI Radar
 
-[English](#english) | [Português](#português)
+A local regulatory-intelligence pipeline that collects recent official
+publications, removes duplicates, ranks relevance, estimates regulatory impact,
+and presents the results in an interactive dashboard.
 
-## English
+The project is deterministic, auditable, and does not require paid APIs.
 
-### Overview
+## What it delivers
 
-Regulatory AI Radar is a regulatory intelligence project focused on Artificial Intelligence, governance, risk, data protection, financial regulation, and legislative monitoring.
+- eight official Brazilian and international sources;
+- collection of the latest publications from each source;
+- local SQLite persistence and URL-based duplicate prevention;
+- deterministic relevance score and one-to-five-star classification;
+- deterministic regulatory-impact score with auditable evidence;
+- isolated source failures and persistent pipeline history;
+- daily hidden execution on Windows with local logs;
+- read-only Streamlit dashboard with filters and monitoring;
+- automated tests without live network calls.
 
-The application collects publications from official national and international sources, normalizes and stores their content, calculates an auditable regulatory relevance score, and presents the results in an interactive dashboard.
+## Sources
 
-### Objectives
+| Code | Source |
+| --- | --- |
+| `ANPD` | Brazilian National Data Protection Authority |
+| `BCB` | Central Bank of Brazil |
+| `CAMARA` | Brazilian Chamber of Deputies |
+| `EU_AI_OFFICE` | European AI Office |
+| `FSB` | Financial Stability Board |
+| `BIS` | BIS Innovation Hub |
+| `IAPP` | International Association of Privacy Professionals |
+| `OECD_AI` | OECD.AI |
 
-The project aims to:
-
-- automate regulatory and legislative publication collection;
-- prioritize the most recent publications;
-- identify content related to Artificial Intelligence and regulation;
-- organize publications from multiple official sources;
-- prevent duplicate records;
-- calculate explainable regulatory relevance scores;
-- provide a fully local and auditable relevance classification;
-- provide structured information for dashboards and reports.
-
-### Current sources
-
-- Brazilian National Data Protection Authority (ANPD)
-- Central Bank of Brazil (BCB)
-- Brazilian Chamber of Deputies
-- European Commission — Artificial Intelligence topic
-- Financial Stability Board (FSB)
-- Bank for International Settlements — Innovation Hub (BIS)
-- International Association of Privacy Professionals (IAPP)
-- OECD.AI Policy Observatory
-
-### Current capabilities
-
-- Collection from eight official sources
-- Explicit newest-to-oldest ordering
-- Extraction of titles, dates, summaries, content, and official URLs
-- Official domain and publication-path validation
-- Shared publication normalization
-- Local SQLite persistence
-- Database mapping and queries with SQLAlchemy
-- Duplicate prevention through unique publication URLs
-- Deterministic regulatory relevance scoring
-- Keyword and category evidence for every score
-- Ranking from highest to lowest relevance
-- Persistence and updating of analyses
-- Interactive Streamlit dashboard
-- Filters by source, level, minimum score, relevance, and text
-- Dynamic metrics and ranked publication cards
-- Links to original official publications
-- Local deterministic relevance classification from one to five stars
-- Auditable classification evidence and justification without external APIs
-- Unified execution of every configured source through one pipeline
-- Independent failure isolation for each source
-- Persistent pipeline and per-source execution history
-- Pipeline health, duration, collection, duplicate, and error monitoring
-- Daily automated execution at 08:00 through Windows Task Scheduler
-- Hidden scheduled execution with timestamped local logs
-- Automated collector and relevance tests
-
-### Source roadmap
-
-All sources planned for the initial multi-source version have been implemented. Future sources will be selected according to regulatory relevance, public availability, and technical stability.
-
-### Planned features
-
-- Additional regulatory collectors
-- Refinement of the local deterministic classification rules
-- Identification of impacts on financial institutions
-- Automated summaries
-- Detection of similar publications
-- Regulatory change history
-- Alerts and periodic regulatory reports
-- Cloud deployment
-
-### Project structure
+## Processing flow
 
 ```text
-regulatory-ai-radar
-├── dashboard
-│   └── app.py
-├── scripts
-│   ├── analyze_articles.py
-│   ├── list_articles.py
-│   ├── run_pipeline.py
-│   ├── run_scheduled_pipeline.ps1
-│   ├── run_scheduled_pipeline.vbs
-│   ├── run_anpd.py
-│   ├── run_bcb.py
-│   ├── run_bis.py
-│   ├── run_camara.py
-│   ├── run_eu_ai_office.py
-│   ├── run_fsb.py
-│   ├── run_iapp.py
-│   └── run_oecd_ai.py
-├── src
-│   └── regulatory_ai_radar
-│       ├── analysis
-│       │   ├── __init__.py
-│       │   └── relevance.py
-│       ├── collectors
-│       │   ├── __init__.py
-│       │   ├── anpd.py
-│       │   ├── bcb.py
-│       │   ├── bis.py
-│       │   ├── camara.py
-│       │   ├── eu_ai_office.py
-│       │   ├── fsb.py
-│       │   ├── iapp.py
-│       │   └── oecd_ai.py
-│       ├── database
-│       │   ├── __init__.py
-│       │   ├── analysis_repository.py
-│       │   ├── base.py
-│       │   ├── dashboard_repository.py
-│       │   ├── models.py
-│       │   ├── pipeline_repository.py
-│       │   ├── repository.py
-│       │   └── session.py
-│       ├── pipeline
-│       │   ├── __init__.py
-│       │   └── runner.py
-│       ├── __init__.py
-│       └── entities.py
-├── tests
-│   ├── test_bcb_collector.py
-│   ├── test_bis_collector.py
-│   ├── test_camara_collector.py
-│   ├── test_eu_ai_office_collector.py
-│   ├── test_fsb_collector.py
-│   ├── test_iapp_collector.py
-│   ├── test_oecd_ai_collector.py
-│   ├── test_pipeline.py
-│   └── test_relevance.py
-├── .gitignore
-├── pyproject.toml
-└── README.md
+Official sources
+      ↓
+Collectors → normalization → SQLite deduplication
+      ↓
+Relevance analysis → local stars → regulatory impact
+      ↓
+Pipeline history and Streamlit dashboard
 ```
 
-The local `data` and `logs` directories are created automatically. Database files and execution logs are excluded from Git.
+The unified pipeline executes each source independently. A failed source is
+recorded without discarding successful results from the others.
 
-### Requirements
+## Classification
 
-- Python 3.12 or later
-- Git
-- Internet connection for publication collection
-- Modern web browser for the dashboard
+### Relevance
 
-### Installation
+The relevance analyzer assigns a score from 0 to 100 using matched keywords and
+categories. The local star classifier converts the score using fixed ranges:
 
-Clone the repository and enter its directory:
+| Score | Stars |
+| --- | --- |
+| 0–14 | 1 |
+| 15–29 | 2 |
+| 30–44 | 3 |
+| 45–59 | 4 |
+| 60–100 | 5 |
+
+### Regulatory impact
+
+Impact is calculated independently from relevance. Its four components total
+100 points:
+
+| Component | Maximum |
+| --- | ---: |
+| Regulatory force | 30 |
+| Financial applicability | 30 |
+| Technology and data governance | 25 |
+| Operational urgency | 15 |
+
+| Impact score | Level |
+| --- | --- |
+| 0–19 | Low |
+| 20–39 | Moderate |
+| 40–59 | High |
+| 60–79 | Very high |
+| 80–100 | Critical |
+
+Each stored result includes its component scores, matched evidence, explanation,
+model name, and criteria version.
+
+## Setup
+
+Requirements: Python 3.12 or newer and Git.
 
 ```powershell
 git clone <repository-url>
 cd regulatory-ai-radar
-```
-
-Create a virtual environment:
-
-```powershell
 py -m venv .venv
-```
-
-Activate it in PowerShell:
-
-```powershell
 .\.venv\Scripts\Activate.ps1
-```
-
-Install the project and its dependencies in editable mode:
-
-```powershell
+python -m pip install --upgrade pip
 python -m pip install -e .
 ```
 
-Editable mode allows source-code changes to be used without reinstalling the project after every modification.
-
-### Usage
-
-#### Collect ANPD news
+## Usage
 
 ```powershell
-python scripts\run_anpd.py
-```
+# Run the complete pipeline.
+python scripts\run_pipeline.py --limit 5
 
-The script collects up to five recent official ANPD news articles, normalizes them, stores new records, and skips duplicate URLs.
+# Recalculate existing local classifications.
+python scripts\classify_articles_local.py
+python scripts\classify_article_impacts.py
 
-#### Collect BCB news
-
-```powershell
-python scripts\run_bcb.py
-```
-
-The script accesses the official BCB Atom feed, validates official links, orders articles from newest to oldest, and stores up to five recent records.
-
-#### Collect Chamber of Deputies propositions
-
-```powershell
-python scripts\run_camara.py
-```
-
-The script searches the official Chamber API by regulatory topics, removes repeated results, orders propositions by date, and stores up to five recent records.
-
-#### Collect European AI publications
-
-```powershell
-python scripts\run_eu_ai_office.py
-```
-
-The script accesses the European Commission digital strategy portal, selects the Artificial Intelligence topic, validates links, orders candidates, and extracts the most recent publications.
-
-#### Collect FSB publications
-
-```powershell
-python scripts\run_fsb.py
-```
-
-The script accesses the official FSB Financial Innovation page, extracts publication cards, validates dated official URLs, and stores up to five recent records.
-
-#### Collect BIS Innovation Hub publications
-
-```powershell
-python scripts\run_bis.py
-```
-
-This script:
-
-1. accesses the official BIS Innovation Hub publication list;
-2. validates the JSON response;
-3. identifies official publication paths;
-4. normalizes canonical BIS URLs;
-5. removes duplicate candidates;
-6. sorts all candidates from newest to oldest;
-7. opens only the detail pages required by the limit;
-8. extracts titles, summaries, content, dates, and URLs;
-9. stores up to five recent publications;
-10. skips URLs already stored.
-
-#### Collect IAPP news articles
-
-```powershell
-python scripts\run_iapp.py
-```
-
-The script reads the official public IAPP news results, validates article URLs, removes duplicates, sorts publications from newest to oldest, and stores up to five recent records. For member-gated publications, it stores only the publicly available metadata and does not extract protected body content.
-
-#### Collect OECD.AI publications
-
-```powershell
-python scripts\run_oecd_ai.py
-```
-
-The script requests the official public OECD.AI publication endpoint, validates structured records and slugs, builds canonical public URLs, removes duplicates, sorts results from newest to oldest, and stores up to five recent publications.
-
-#### Run the unified pipeline
-
-```powershell
-python scripts\run_pipeline.py
-```
-
-The pipeline performs the complete workflow for all eight configured sources:
-
-1. collects the most recent publications from every source;
-2. persists new records and skips URLs already stored;
-3. analyzes only publications that do not yet have an analysis;
-4. isolates failures so that one unavailable source does not stop the others;
-5. records totals, durations, statuses, and errors for the complete run and each source.
-
-The default limit is five recent publications per source. Use `--limit` to change it:
-
-```powershell
-python scripts\run_pipeline.py --limit 10
-```
-
-#### Daily scheduled execution on Windows
-
-The project includes two scheduling wrappers:
-
-```text
-scripts/run_scheduled_pipeline.ps1
-scripts/run_scheduled_pipeline.vbs
-```
-
-The PowerShell wrapper uses the project `.venv`, runs the unified pipeline, returns an operating-system exit code, and appends the complete output to:
-
-```text
-logs/scheduled_pipeline.log
-```
-
-The VBScript launcher executes the PowerShell wrapper invisibly, avoiding a console window during automatic runs.
-
-On the configured development machine, Windows Task Scheduler runs the pipeline every day at `08:00`. The task starts when the computer becomes available if the scheduled time was missed, is allowed to run on battery power, and has a two-hour execution limit. The Windows task itself is machine-specific; the versioned scripts make the automation reproducible on another Windows computer.
-
-Run the scheduled wrapper manually for validation:
-
-```powershell
-powershell.exe -NoProfile -ExecutionPolicy Bypass -File ".\scripts\run_scheduled_pipeline.ps1"
-```
-
-Run the hidden launcher manually:
-
-```powershell
-cscript.exe //NoLogo scripts\run_scheduled_pipeline.vbs
-```
-
-#### List stored publications
-
-```powershell
-python scripts\list_articles.py
-```
-
-This script reads the local database and displays the main information for every stored publication.
-
-#### Analyze and rank publications
-
-```powershell
-python scripts\analyze_articles.py
-```
-
-This script:
-
-1. reads publications from every source;
-2. analyzes titles, summaries, and bodies;
-3. calculates an explainable relevance score;
-4. classifies publications as low, medium, or high relevance;
-5. stores or updates each analysis;
-6. ranks publications from highest to lowest score.
-
-Run this script again after collecting new publications so the new records receive relevance scores.
-
-#### Launch the dashboard
-
-```powershell
+# Open the dashboard.
 python -m streamlit run dashboard\app.py
-```
 
-The dashboard is normally available at:
-
-```text
-http://localhost:8501
-```
-
-The dashboard provides:
-
-- latest pipeline run identifier, status, and completion time;
-- number of healthy sources and execution errors;
-- per-source status, duration, collected, inserted, and duplicate counts;
-- total and filtered publication metrics;
-- number of relevant publications;
-- number of high-relevance publications;
-- average relevance score;
-- source filters for ANPD, BCB, BIS, CAMARA, EU_AI_OFFICE, FSB, IAPP, and OECD_AI;
-- relevance-level filters;
-- minimum-score selection;
-- relevant-only selection;
-- text search;
-- ranked regulatory publication cards;
-- links to original official publications;
-- read-only local relevance classifications from one to five stars;
-- deterministic classification evidence and justification.
-
-To stop the dashboard, return to the terminal and press:
-
-```text
-Ctrl + C
-```
-
-### Validation
-
-Check all Python files for syntax and indentation errors:
-
-```powershell
-python -m compileall src scripts tests dashboard
-```
-
-Run the automated test suite:
-
-```powershell
+# Run all tests.
 python -m unittest discover -s tests -v
 ```
 
-The suite currently contains 50 tests covering:
+The dashboard is available at [http://localhost:8501](http://localhost:8501).
+The Windows scheduler can call `scripts\run_scheduled_pipeline.vbs`, which runs
+the PowerShell launcher invisibly and writes execution output to `logs\`.
 
-- relevance score calculation;
-- relevance thresholds;
-- accent and capitalization normalization;
-- article-body score contribution;
-- maximum score enforcement;
-- BCB Atom feed parsing and ordering;
-- BCB URL normalization and domain validation;
-- BCB collection limits;
-- Chamber proposition ordering and normalization;
-- Chamber duplicate removal and period validation;
-- European publication ordering and normalization;
-- European URL validation and collection limits;
-- FSB publication ordering;
-- FSB duplicate-card removal;
-- FSB official-domain validation;
-- FSB article-content normalization;
-- FSB collection-limit enforcement;
-- BIS publication ordering;
-- BIS duplicate removal;
-- BIS official-path validation;
-- BIS article-content normalization;
-- BIS collection-limit enforcement;
-- IAPP structured-result extraction and ordering;
-- IAPP URL validation and duplicate removal;
-- IAPP public-body normalization;
-- protection of member-gated article bodies;
-- IAPP collection-limit enforcement;
-- OECD.AI structured-record ordering and normalization;
-- OECD.AI canonical URL and slug validation;
-- OECD.AI duplicate removal and body-summary fallback;
-- OECD.AI API ordering parameters and collection limits;
-- zero-limit collection without network requests;
-- successful multi-source pipeline execution;
-- partial pipeline execution when one source fails;
-- complete pipeline failure tracking when all sources fail.
+## Local data
 
-### Data normalization
+The SQLite database and generated logs remain local and are ignored by Git.
+Main tables store publications, relevance analyses, local stars, regulatory
+impact, pipeline executions, and per-source execution details.
 
-Every collector returns the same `NewsItem` structure:
+## Current status
 
-```text
-source
-title
-url
-published_at
-summary
-body
-collected_at
-```
-
-This shared contract allows the database, relevance analyzer, and dashboard to process publications without depending on their original source.
-
-### Collection strategies
-
-#### BCB
-
-The BCB collector uses the institution’s official Atom feed:
-
-```text
-https://www.bcb.gov.br/api/feed/sitebcb/sitefeeds/noticias
-```
-
-The current year is sent through the `ano` parameter. Entries are explicitly sorted before the collection limit is applied.
-
-Only these domains are accepted:
-
-```text
-bcb.gov.br
-www.bcb.gov.br
-```
-
-#### Chamber of Deputies
-
-The Chamber collector uses the official Open Data API:
-
-```text
-https://dadosabertos.camara.leg.br/api/v2/proposicoes
-```
-
-It searches propositions related to topics such as:
-
-```text
-artificial intelligence
-algorithms
-data protection
-personal data
-cybersecurity
-virtual assets
-financial system
-central bank
-```
-
-The selected proposition types are:
-
-```text
-PL
-PLP
-PEC
-MPV
-PDL
-```
-
-Results returned by multiple searches are deduplicated through their official identifiers and sorted by presentation date.
-
-#### European AI publications
-
-The European collector uses the official Shaping Europe’s Digital Future portal:
-
-```text
-https://digital-strategy.ec.europa.eu/en/news
-```
-
-The listing uses the official Artificial Intelligence topic:
-
-```text
-topic=119
-```
-
-Only HTTPS links from the following official domain and path are accepted:
-
-```text
-digital-strategy.ec.europa.eu
-/en/news/
-```
-
-#### Financial Stability Board
-
-The FSB collector uses the official Financial Innovation page:
-
-```text
-https://www.fsb.org/policy_areas/financial-innovation/
-```
-
-Only HTTPS links belonging to these domains are accepted:
-
-```text
-fsb.org
-www.fsb.org
-```
-
-Publication URLs must follow the official dated structure:
-
-```text
-/YYYY/MM/
-```
-
-Candidates are normalized, deduplicated, sorted, and opened only until the requested limit is reached.
-
-#### Bank for International Settlements
-
-The BIS collector uses the official BIS Innovation Hub publication list:
-
-```text
-https://www.bis.org/api/document_lists/bisih_publications.json
-```
-
-The endpoint provides structured information including:
-
-- publication paths;
-- official titles;
-- publication dates;
-- topics;
-- institutional sources.
-
-Only paths matching the official publication structure are accepted:
-
-```text
-/publ/<publication-identifier>
-```
-
-Examples include:
-
-```text
-/publ/othp109
-/publ/othp112
-```
-
-The collector converts these paths into canonical official pages:
-
-```text
-https://www.bis.org/publ/<publication-identifier>.htm
-```
-
-Only these domains are accepted:
-
-```text
-bis.org
-www.bis.org
-```
-
-The collector:
-
-1. validates the JSON response;
-2. validates publication paths;
-3. builds canonical URLs;
-4. removes duplicate URLs;
-5. sorts all candidates from newest to oldest;
-6. selects the most recent candidates;
-7. opens only the pages required by the limit;
-8. extracts summaries and main content from the official detail pages.
-
-This strategy uses the BIS structured data source for discovery while preserving the official HTML publication page as the public URL.
-
-#### International Association of Privacy Professionals
-
-The IAPP collector reads the public server-rendered search results from:
-
-```text
-https://iapp.org/news
-```
-
-Only HTTPS links from the official IAPP domains and article path are accepted:
-
-```text
-iapp.org
-www.iapp.org
-/news/a/<article-slug>
-```
-
-The collector validates and decodes the structured results, canonicalizes URLs, removes duplicates, and explicitly sorts candidates from newest to oldest. Public article bodies are normalized from rich-text sections. When a result is marked as member-gated, only its publicly available title, date, summary, and URL are stored; protected body content is not extracted.
-
-#### OECD.AI Policy Observatory
-
-The OECD.AI collector uses the platform's public WordPress REST endpoint:
-
-```text
-https://wp.oecd.ai/wp-json/wp/v2/ai-publications
-```
-
-The request explicitly orders records by publication date in descending order. Structured titles, excerpts, bodies, dates, and slugs are validated and normalized. Only slugs containing lowercase letters, numbers, and hyphens are accepted.
-
-The API slug is converted into the canonical public OECD.AI page:
-
-```text
-https://oecd.ai/en/ai-publications/<publication-slug>
-```
-
-The collector requests extra recent candidates for validation, removes duplicate canonical URLs, selects the requested number of valid publications, and preserves newest-to-oldest ordering.
-
-### Relevance scoring
-
-The initial relevance model is deterministic and auditable. It does not use a Large Language Model.
-
-The analyzer:
-
-- normalizes capitalization, accents, punctuation, and whitespace;
-- searches for complete regulatory keywords and expressions;
-- assigns a predefined weight to each matched keyword;
-- adds a 50% bonus when a keyword appears in the title;
-- limits the final score to 100;
-- records matched keywords and categories.
-
-| Score | Level | Relevant |
-|---:|---|---|
-| 0–29 | Low | No |
-| 30–59 | Medium | Yes |
-| 60–100 | High | Yes |
-
-This deterministic score provides the objective and explainable basis for the local star classification.
-
-The local classifier converts the deterministic score into a read-only star rating:
-
-| Score | Local rating |
-|---:|---:|
-| 0–14 | 1 star |
-| 15–29 | 2 stars |
-| 30–44 | 3 stars |
-| 45–59 | 4 stars |
-| 60–100 | 5 stars |
-
-The classifier runs locally, makes no network request, uses no paid API, and stores an auditable justification for each result. Existing analyses can be classified with:
-
-```powershell
-python scripts\classify_articles_local.py
-```
-
-### Dashboard architecture
-
-The Streamlit dashboard reads the local SQLite database through a dedicated query repository. Local star classifications are read-only in the interface.
-
-Collection, analysis, and visualization remain separate operations:
-
-```text
-Official regulatory and institutional sources
-    ↓
-Source collectors
-    ↓
-Publication normalization
-    ↓
-Publication persistence
-    ↓
-Relevance analysis
-    ↓
-Analysis persistence
-    ↓
-Local five-star classification
-    ↓
-Local classification persistence
-    ↓
-Pipeline execution persistence and monitoring
-    ↓
-Dashboard visualization
-```
-
-The dashboard is read-only: it does not perform collection or modify deterministic relevance scores and classifications.
-
-### Database
-
-The application uses SQLite for local persistence:
-
-```text
-data/regulatory_ai_radar.db
-```
-
-SQLAlchemy provides models, sessions, queries, constraints, and transaction management.
-
-The database contains:
-
-- `news_articles`: normalized publications from every source;
-- `article_analyses`: relevance scores and supporting evidence;
-- `classificacoes_ia_artigos`: one current local five-star classification, deterministic evidence, and justification per publication; the physical table name is retained for SQLite compatibility;
-- `pipeline_runs`: overall status, totals, timestamps, and errors for each pipeline run;
-- `pipeline_source_runs`: status, duration, collection totals, duplicate totals, and errors for each source execution.
-
-Publication URLs are unique and prevent duplicate records. Each analyzed publication has one current local classification. Repeated local classification updates the existing record instead of creating duplicates.
-
-The database file is excluded from Git.
-
-### Status
-
-🚧 Under development.
-
-#### Current stage
-
-- [x] Initial project structure
-- [x] ANPD news collector
-- [x] BCB news collector
-- [x] Chamber of Deputies proposition collector
-- [x] European AI publication collector
-- [x] FSB publication collector
-- [x] BIS Innovation Hub publication collector
-- [x] IAPP news collector
-- [x] OECD.AI publication collector
-- [x] Shared publication normalization
-- [x] SQLite persistence
+- [x] Eight official collectors
+- [x] Shared normalization and SQLite persistence
 - [x] Duplicate prevention
-- [x] Deterministic relevance ranking
-- [x] Analysis persistence
-- [x] Automated relevance tests
-- [x] Automated tests for BCB, Chamber, European AI, FSB, BIS, IAPP, and OECD.AI collectors
+- [x] Deterministic relevance ranking and local stars
+- [x] Audited local classification ranges
+- [x] Deterministic regulatory-impact classification
+- [x] Unified and monitored pipeline
 - [x] Interactive multi-source dashboard
-- [x] Unified multi-source pipeline
-- [x] Independent source failure isolation
-- [x] Persistent pipeline execution history
-- [x] Pipeline monitoring in the dashboard
-- [x] Daily automated execution at 08:00 on Windows
-- [x] Hidden scheduled execution and local log generation
-- [x] Local deterministic classification from one to five stars
-- [x] Auditable local evidence and justification without external APIs
-- [x] Automated local classifier, repository, pipeline, and dashboard query tests
-- [ ] Additional international regulatory sources
-- [ ] Refinement of local deterministic classification rules
-- [ ] Cloud deployment
-
-### Technologies
-
-- Python
-- Beautiful Soup
-- Requests
-- SQLAlchemy
-- SQLite
-- Streamlit
-- XML and Atom
-- REST APIs and JSON
-- HTML parsing
-- Git
+- [x] Daily hidden execution on Windows
+- [x] Automated tests
 
 ---
 
-## Português
+# Regulatory AI Radar — Português
 
-### Visão geral
+Pipeline local de inteligência regulatória que coleta publicações oficiais
+recentes, remove duplicidades, ordena por relevância, estima o impacto
+regulatório e apresenta os resultados em um dashboard interativo.
 
-O Regulatory AI Radar é um projeto de inteligência regulatória voltado ao acompanhamento de Inteligência Artificial, governança, riscos, proteção de dados, regulação financeira e atividade legislativa.
+O projeto é determinístico, auditável e não depende de APIs pagas.
 
-A aplicação coleta publicações de fontes oficiais nacionais e internacionais, normaliza e armazena o conteúdo, calcula um score auditável de relevância regulatória e apresenta os resultados em um dashboard interativo.
+## Entregas
 
-### Objetivos
+- oito fontes oficiais brasileiras e internacionais;
+- coleta das publicações mais recentes de cada fonte;
+- persistência local em SQLite e prevenção de duplicidades por URL;
+- score determinístico de relevância e classificação de uma a cinco estrelas;
+- score determinístico de impacto regulatório com evidências auditáveis;
+- isolamento de falhas por fonte e histórico persistente do pipeline;
+- execução diária oculta no Windows com logs locais;
+- dashboard Streamlit somente leitura, com filtros e monitoramento;
+- testes automatizados sem chamadas reais de rede.
 
-O projeto busca:
+## Fontes
 
-- automatizar a coleta de publicações regulatórias e legislativas;
-- priorizar as publicações mais recentes;
-- identificar conteúdos relacionados à Inteligência Artificial e à regulação;
-- organizar publicações de diferentes fontes oficiais;
-- impedir registros duplicados;
-- calcular scores explicáveis de relevância regulatória;
-- fornecer uma classificação de relevância totalmente local e auditável;
-- fornecer informações estruturadas para dashboards e relatórios.
+| Código | Fonte |
+| --- | --- |
+| `ANPD` | Autoridade Nacional de Proteção de Dados |
+| `BCB` | Banco Central do Brasil |
+| `CAMARA` | Câmara dos Deputados |
+| `EU_AI_OFFICE` | Escritório Europeu de Inteligência Artificial |
+| `FSB` | Financial Stability Board |
+| `BIS` | BIS Innovation Hub |
+| `IAPP` | International Association of Privacy Professionals |
+| `OECD_AI` | OECD.AI |
 
-### Fontes atuais
-
-- Agência Nacional de Proteção de Dados (ANPD)
-- Banco Central do Brasil (BCB)
-- Câmara dos Deputados
-- Comissão Europeia — tópico de Inteligência Artificial
-- Financial Stability Board (FSB)
-- Bank for International Settlements — Innovation Hub (BIS)
-- International Association of Privacy Professionals (IAPP)
-- Observatório de Políticas de IA da OCDE (OECD.AI)
-
-### Funcionalidades atuais
-
-- Coleta de oito fontes oficiais
-- Ordenação da publicação mais recente para a mais antiga
-- Extração de títulos, datas, resumos, conteúdo e URLs
-- Validação de domínios e caminhos oficiais
-- Normalização compartilhada
-- Persistência local com SQLite
-- Mapeamento e consultas com SQLAlchemy
-- Prevenção de duplicidades por URLs únicas
-- Score determinístico de relevância
-- Evidências de palavras-chave e categorias
-- Ranking da maior para a menor relevância
-- Persistência e atualização das análises
-- Dashboard interativo com Streamlit
-- Filtros por fonte, nível, score, relevância e texto
-- Indicadores dinâmicos e cartões de publicações
-- Links para publicações oficiais
-- Classificação local determinística de relevância com uma a cinco estrelas
-- Evidência e justificativa auditáveis sem APIs externas
-- Execução unificada de todas as fontes configuradas em um único pipeline
-- Isolamento independente de falhas por fonte
-- Histórico persistente das execuções gerais e de cada fonte
-- Monitoramento de saúde, duração, coleta, duplicidades e erros do pipeline
-- Execução automática diária às 08:00 pelo Agendador de Tarefas do Windows
-- Execução agendada oculta com logs locais e horários registrados
-- Testes automatizados dos coletores e da relevância
-
-### Roteiro de fontes
-
-Todas as fontes planejadas para a versão inicial com múltiplas fontes foram implementadas. Fontes futuras serão selecionadas conforme relevância regulatória, disponibilidade pública e estabilidade técnica.
-
-### Funcionalidades planejadas
-
-- Coletores adicionais
-- Aprimoramento das regras locais de classificação determinística
-- Identificação de impactos para instituições financeiras
-- Resumos automatizados
-- Detecção de publicações semelhantes
-- Histórico de mudanças regulatórias
-- Alertas e relatórios periódicos
-- Publicação em nuvem
-
-### Estrutura do projeto
+## Fluxo
 
 ```text
-regulatory-ai-radar
-├── dashboard
-│   └── app.py
-├── scripts
-│   ├── analyze_articles.py
-│   ├── list_articles.py
-│   ├── run_pipeline.py
-│   ├── run_scheduled_pipeline.ps1
-│   ├── run_scheduled_pipeline.vbs
-│   ├── run_anpd.py
-│   ├── run_bcb.py
-│   ├── run_bis.py
-│   ├── run_camara.py
-│   ├── run_eu_ai_office.py
-│   ├── run_fsb.py
-│   ├── run_iapp.py
-│   └── run_oecd_ai.py
-├── src
-│   └── regulatory_ai_radar
-│       ├── analysis
-│       │   ├── __init__.py
-│       │   └── relevance.py
-│       ├── collectors
-│       │   ├── __init__.py
-│       │   ├── anpd.py
-│       │   ├── bcb.py
-│       │   ├── bis.py
-│       │   ├── camara.py
-│       │   ├── eu_ai_office.py
-│       │   ├── fsb.py
-│       │   ├── iapp.py
-│       │   └── oecd_ai.py
-│       ├── database
-│       │   ├── __init__.py
-│       │   ├── analysis_repository.py
-│       │   ├── base.py
-│       │   ├── dashboard_repository.py
-│       │   ├── models.py
-│       │   ├── pipeline_repository.py
-│       │   ├── repository.py
-│       │   └── session.py
-│       ├── pipeline
-│       │   ├── __init__.py
-│       │   └── runner.py
-│       ├── __init__.py
-│       └── entities.py
-├── tests
-│   ├── test_bcb_collector.py
-│   ├── test_bis_collector.py
-│   ├── test_camara_collector.py
-│   ├── test_eu_ai_office_collector.py
-│   ├── test_fsb_collector.py
-│   ├── test_iapp_collector.py
-│   ├── test_oecd_ai_collector.py
-│   ├── test_pipeline.py
-│   └── test_relevance.py
-├── .gitignore
-├── pyproject.toml
-└── README.md
+Fontes oficiais
+      ↓
+Coletores → normalização → deduplicação no SQLite
+      ↓
+Análise de relevância → estrelas locais → impacto regulatório
+      ↓
+Histórico do pipeline e dashboard Streamlit
 ```
 
-As pastas locais `data` e `logs` são criadas automaticamente. Os arquivos do banco e os logs de execução não são enviados ao Git.
+O pipeline unificado executa cada fonte de forma independente. A falha de uma
+fonte é registrada sem descartar os resultados obtidos nas demais.
 
-### Requisitos
+## Classificação
 
-- Python 3.12 ou superior
-- Git
-- Conexão com a internet
-- Navegador moderno para o dashboard
+### Relevância
 
-### Instalação
+O analisador atribui um score de 0 a 100 com base nas palavras-chave e
+categorias identificadas. A classificação local converte o score em estrelas:
 
-Clone o repositório:
+| Score | Estrelas |
+| --- | --- |
+| 0–14 | 1 |
+| 15–29 | 2 |
+| 30–44 | 3 |
+| 45–59 | 4 |
+| 60–100 | 5 |
+
+### Impacto regulatório
+
+O impacto é calculado separadamente da relevância. Seus quatro componentes
+totalizam 100 pontos:
+
+| Componente | Máximo |
+| --- | ---: |
+| Força regulatória | 30 |
+| Aplicabilidade financeira | 30 |
+| Governança tecnológica e de dados | 25 |
+| Urgência operacional | 15 |
+
+| Score de impacto | Nível |
+| --- | --- |
+| 0–19 | Baixo |
+| 20–39 | Moderado |
+| 40–59 | Alto |
+| 60–79 | Muito alto |
+| 80–100 | Crítico |
+
+Cada resultado armazena as parcelas, evidências encontradas, justificativa,
+nome do modelo e versão dos critérios.
+
+## Instalação
+
+Requisitos: Python 3.12 ou superior e Git.
 
 ```powershell
 git clone <url-do-repositorio>
 cd regulatory-ai-radar
-```
-
-Crie o ambiente virtual:
-
-```powershell
 py -m venv .venv
-```
-
-Ative-o:
-
-```powershell
 .\.venv\Scripts\Activate.ps1
-```
-
-Instale o projeto em modo editável:
-
-```powershell
+python -m pip install --upgrade pip
 python -m pip install -e .
 ```
 
-### Utilização
-
-#### Coletar notícias da ANPD
+## Uso
 
 ```powershell
-python scripts\run_anpd.py
-```
+# Executar o pipeline completo.
+python scripts\run_pipeline.py --limit 5
 
-Coleta até cinco notícias recentes, normaliza os dados, armazena registros novos e ignora URLs duplicadas.
+# Recalcular as classificações existentes.
+python scripts\classify_articles_local.py
+python scripts\classify_article_impacts.py
 
-#### Coletar notícias do BCB
-
-```powershell
-python scripts\run_bcb.py
-```
-
-Acessa o feed Atom oficial, valida links, ordena as notícias e armazena até cinco registros recentes.
-
-#### Coletar proposições da Câmara
-
-```powershell
-python scripts\run_camara.py
-```
-
-Pesquisa temas regulatórios na API oficial, remove resultados repetidos, ordena as proposições e armazena até cinco registros.
-
-#### Coletar publicações europeias sobre IA
-
-```powershell
-python scripts\run_eu_ai_office.py
-```
-
-Acessa o portal da Comissão Europeia, seleciona o tópico de IA, valida os links e extrai as publicações mais recentes.
-
-#### Coletar publicações do FSB
-
-```powershell
-python scripts\run_fsb.py
-```
-
-Acessa a página oficial de inovação financeira, valida os links datados e armazena até cinco publicações.
-
-#### Coletar publicações do BIS Innovation Hub
-
-```powershell
-python scripts\run_bis.py
-```
-
-O script:
-
-1. acessa a lista oficial do BIS Innovation Hub;
-2. valida a resposta JSON;
-3. identifica os caminhos oficiais;
-4. constrói URLs canônicas;
-5. remove candidatos duplicados;
-6. ordena os resultados da data mais recente para a mais antiga;
-7. abre somente as páginas necessárias;
-8. extrai títulos, resumos, conteúdo, datas e URLs;
-9. armazena até cinco publicações;
-10. ignora registros duplicados.
-
-#### Coletar notícias da IAPP
-
-```powershell
-python scripts\run_iapp.py
-```
-
-O script lê os resultados públicos oficiais da IAPP, valida as URLs dos artigos, remove duplicidades, ordena as publicações da mais recente para a mais antiga e armazena até cinco registros. Para publicações restritas a membros, somente os metadados públicos são armazenados; o conteúdo protegido do corpo não é extraído.
-
-#### Coletar publicações da OECD.AI
-
-```powershell
-python scripts\run_oecd_ai.py
-```
-
-O script consulta o endpoint público oficial da OECD.AI, valida os registros estruturados e os slugs, constrói URLs públicas canônicas, elimina duplicidades, ordena os resultados da publicação mais recente para a mais antiga e armazena até cinco registros.
-
-#### Executar o pipeline unificado
-
-```powershell
-python scripts\run_pipeline.py
-```
-
-O pipeline realiza o fluxo completo para as oito fontes configuradas:
-
-1. coleta as publicações mais recentes de cada fonte;
-2. persiste registros novos e ignora URLs já armazenadas;
-3. analisa somente publicações que ainda não possuem análise;
-4. isola falhas para que uma fonte indisponível não interrompa as demais;
-5. registra totais, durações, status e erros da execução completa e de cada fonte.
-
-O limite padrão é de cinco publicações recentes por fonte. Use `--limit` para alterá-lo:
-
-```powershell
-python scripts\run_pipeline.py --limit 10
-```
-
-#### Execução diária agendada no Windows
-
-O projeto contém dois iniciadores para o agendamento:
-
-```text
-scripts/run_scheduled_pipeline.ps1
-scripts/run_scheduled_pipeline.vbs
-```
-
-O iniciador PowerShell utiliza diretamente o Python da `.venv`, executa o pipeline unificado, retorna um código de saída ao sistema operacional e acrescenta a saída completa ao arquivo:
-
-```text
-logs/scheduled_pipeline.log
-```
-
-O iniciador VBScript executa o PowerShell de forma invisível, evitando a abertura de uma janela durante as coletas automáticas.
-
-Na máquina de desenvolvimento configurada, o Agendador de Tarefas do Windows executa o pipeline todos os dias às `08:00`. A tarefa inicia quando o computador volta a ficar disponível caso o horário tenha sido perdido, pode funcionar usando bateria e possui limite de duas horas por execução. A tarefa do Windows é específica de cada computador; os scripts versionados permitem reproduzir a automação em outra máquina Windows.
-
-Para validar manualmente o iniciador agendável:
-
-```powershell
-powershell.exe -NoProfile -ExecutionPolicy Bypass -File ".\scripts\run_scheduled_pipeline.ps1"
-```
-
-Para testar o iniciador oculto:
-
-```powershell
-cscript.exe //NoLogo scripts\run_scheduled_pipeline.vbs
-```
-
-#### Listar publicações
-
-```powershell
-python scripts\list_articles.py
-```
-
-Consulta o banco e exibe as informações principais das publicações.
-
-#### Analisar publicações
-
-```powershell
-python scripts\analyze_articles.py
-```
-
-Calcula o score, define o nível, registra evidências, persiste as análises e apresenta o ranking.
-
-Execute novamente depois de cada coleta.
-
-#### Iniciar o dashboard
-
-```powershell
+# Abrir o dashboard.
 python -m streamlit run dashboard\app.py
-```
 
-O dashboard estará normalmente disponível em:
-
-```text
-http://localhost:8501
-```
-
-Ele oferece:
-
-- identificador, status e horário da última execução do pipeline;
-- quantidade de fontes saudáveis e erros de execução;
-- status, duração, registros coletados, inseridos e duplicados por fonte;
-- indicadores totais e filtrados;
-- quantidade de publicações relevantes;
-- quantidade com relevância alta;
-- média dos scores;
-- filtros para ANPD, BCB, BIS, CAMARA, EU_AI_OFFICE, FSB, IAPP e OECD_AI;
-- filtro por nível;
-- score mínimo;
-- opção para exibir somente publicações relevantes;
-- pesquisa textual;
-- cartões ordenados pelo score;
-- links para as publicações originais;
-- classificação local de relevância, somente leitura, com uma a cinco estrelas;
-- evidência e justificativa determinísticas da classificação.
-
-Para encerrar:
-
-```text
-Ctrl + C
-```
-
-### Validação
-
-Verifique a sintaxe e a indentação:
-
-```powershell
-python -m compileall src scripts tests dashboard
-```
-
-Execute os testes:
-
-```powershell
+# Executar os testes.
 python -m unittest discover -s tests -v
 ```
 
-A suíte possui 50 testes e verifica:
+O dashboard fica disponível em
+[http://localhost:8501](http://localhost:8501). O Agendador do Windows pode
+chamar `scripts\run_scheduled_pipeline.vbs`, que executa o iniciador PowerShell
+de forma oculta e grava a saída em `logs\`.
 
-- cálculo e faixas do score;
-- normalização de acentos e letras;
-- contribuição do corpo da publicação;
-- limite máximo do score;
-- interpretação e ordenação do feed do BCB;
-- normalização e validação das URLs do BCB;
-- limites de coleta do BCB;
-- ordenação e normalização das proposições da Câmara;
-- remoção de duplicidades e validação de períodos;
-- ordenação e normalização das publicações europeias;
-- validação das URLs e limites do coletor europeu;
-- ordenação, normalização e limites do FSB;
-- validação dos domínios do FSB;
-- ordenação das publicações do BIS;
-- remoção de resultados duplicados do BIS;
-- validação dos caminhos oficiais do BIS;
-- normalização do conteúdo do BIS;
-- respeito ao limite de coleta do BIS;
-- extração e ordenação dos resultados estruturados da IAPP;
-- validação de URLs e remoção de duplicidades da IAPP;
-- normalização do corpo de artigos públicos da IAPP;
-- proteção do corpo de artigos restritos a membros;
-- respeito ao limite de coleta da IAPP;
-- ordenação e normalização dos registros estruturados da OECD.AI;
-- validação das URLs canônicas e dos slugs da OECD.AI;
-- remoção de duplicidades e resumo alternativo da OECD.AI;
-- parâmetros de ordenação da API e limites de coleta da OECD.AI;
-- ausência de requisições quando o limite é zero;
-- execução bem-sucedida do pipeline com múltiplas fontes;
-- execução parcial quando uma fonte apresenta falha;
-- registro de falha completa quando todas as fontes apresentam erro.
+## Dados locais
 
-### Normalização dos dados
+O banco SQLite e os logs gerados permanecem locais e são ignorados pelo Git. As
+tabelas principais armazenam publicações, análises de relevância, estrelas
+locais, impacto regulatório e execuções do pipeline por fonte.
 
-Todos os coletores retornam a estrutura `NewsItem`:
+## Situação atual
 
-```text
-source
-title
-url
-published_at
-summary
-body
-collected_at
-```
-
-Esse contrato permite que o banco, o analisador e o dashboard processem todas as fontes da mesma maneira.
-
-### Estratégias de coleta
-
-#### BCB
-
-Utiliza o feed Atom oficial:
-
-```text
-https://www.bcb.gov.br/api/feed/sitebcb/sitefeeds/noticias
-```
-
-Somente os domínios oficiais são aceitos.
-
-#### Câmara dos Deputados
-
-Utiliza a API oficial:
-
-```text
-https://dadosabertos.camara.leg.br/api/v2/proposicoes
-```
-
-Pesquisa temas regulatórios e remove resultados repetidos pelo identificador oficial.
-
-#### Publicações europeias sobre IA
-
-Utiliza:
-
-```text
-https://digital-strategy.ec.europa.eu/en/news
-```
-
-Com o tópico:
-
-```text
-topic=119
-```
-
-Somente links oficiais de notícias são aceitos.
-
-#### Financial Stability Board
-
-Utiliza:
-
-```text
-https://www.fsb.org/policy_areas/financial-innovation/
-```
-
-Somente links dos domínios oficiais e com caminhos datados são aceitos.
-
-#### Bank for International Settlements
-
-Utiliza a lista estruturada oficial:
-
-```text
-https://www.bis.org/api/document_lists/bisih_publications.json
-```
-
-São aceitos somente caminhos como:
-
-```text
-/publ/othp109
-/publ/othp112
-```
-
-Eles são convertidos em páginas oficiais:
-
-```text
-https://www.bis.org/publ/othp109.htm
-https://www.bis.org/publ/othp112.htm
-```
-
-O coletor valida a resposta, normaliza os caminhos, elimina duplicidades, ordena as candidatas e abre somente as páginas necessárias para alcançar o limite.
-
-#### International Association of Privacy Professionals
-
-O coletor da IAPP lê os resultados públicos renderizados no servidor em:
-
-```text
-https://iapp.org/news
-```
-
-São aceitos somente links HTTPS dos domínios oficiais e com o caminho de artigos:
-
-```text
-iapp.org
-www.iapp.org
-/news/a/<slug-do-artigo>
-```
-
-O coletor valida e interpreta os resultados estruturados, transforma as URLs em formato canônico, elimina duplicidades e ordena explicitamente as publicações da mais recente para a mais antiga. O corpo de artigos públicos é normalizado a partir das seções de texto. Quando a publicação é restrita a membros, somente título, data, resumo e URL disponíveis publicamente são armazenados; o corpo protegido não é extraído.
-
-#### Observatório de Políticas de IA da OCDE
-
-O coletor da OECD.AI utiliza o endpoint público REST do WordPress da plataforma:
-
-```text
-https://wp.oecd.ai/wp-json/wp/v2/ai-publications
-```
-
-A requisição ordena explicitamente os registros pela data de publicação em ordem decrescente. Títulos, resumos, corpos, datas e slugs estruturados são validados e normalizados. Somente slugs formados por letras minúsculas, números e hífens são aceitos.
-
-O slug da API é convertido na página pública canônica da OECD.AI:
-
-```text
-https://oecd.ai/en/ai-publications/<slug-da-publicacao>
-```
-
-O coletor solicita candidatos recentes adicionais para validação, remove URLs canônicas duplicadas, seleciona a quantidade solicitada de publicações válidas e preserva a ordenação da mais recente para a mais antiga.
-
-### Score de relevância
-
-O modelo inicial é determinístico, auditável e não utiliza um Large Language Model.
-
-O analisador:
-
-- normaliza maiúsculas, acentos, pontuação e espaços;
-- procura palavras-chave e expressões regulatórias;
-- atribui pesos predefinidos;
-- acrescenta bônus de 50% para termos no título;
-- limita o score a 100;
-- registra palavras-chave e categorias.
-
-| Score | Nível | Relevante |
-|---:|---|---|
-| 0–29 | Baixa | Não |
-| 30–59 | Média | Sim |
-| 60–100 | Alta | Sim |
-
-O classificador local converte o score determinístico em estrelas:
-
-| Score | Classificação local |
-|---:|---:|
-| 0–14 | 1 estrela |
-| 15–29 | 2 estrelas |
-| 30–44 | 3 estrelas |
-| 45–59 | 4 estrelas |
-| 60–100 | 5 estrelas |
-
-O classificador é executado localmente, não faz requisições de rede, não usa API paga e armazena uma justificativa auditável. Para classificar análises existentes:
-
-```powershell
-python scripts\classify_articles_local.py
-```
-
-### Arquitetura
-
-```text
-Fontes oficiais
-    ↓
-Coletores
-    ↓
-Normalização
-    ↓
-Persistência das publicações
-    ↓
-Análise de relevância
-    ↓
-Persistência das análises
-    ↓
-Classificação local com cinco estrelas
-    ↓
-Persistência da classificação local
-    ↓
-Persistência e monitoramento das execuções do pipeline
-    ↓
-Dashboard
-```
-
-A interface é somente leitura: não executa coletas nem modifica scores e classificações determinísticas.
-
-### Banco de dados
-
-O SQLite é criado automaticamente em:
-
-```text
-data/regulatory_ai_radar.db
-```
-
-O banco contém:
-
-- `news_articles`: publicações normalizadas;
-- `article_analyses`: scores e evidências;
-- `classificacoes_ia_artigos`: uma classificação local atual com cinco estrelas, evidência determinística e justificativa por publicação; o nome físico da tabela foi mantido por compatibilidade com o SQLite;
-- `pipeline_runs`: status geral, totais, horários e erros de cada execução do pipeline;
-- `pipeline_source_runs`: status, duração, totais de coleta, duplicidades e erros de cada fonte.
-
-As URLs são únicas e impedem duplicidades. Cada publicação analisada possui uma classificação local atual; novas execuções atualizam o mesmo registro. O banco local não é enviado ao Git.
-
-### Status
-
-🚧 Em desenvolvimento.
-
-#### Etapa atual
-
-- [x] Estrutura inicial
-- [x] Coletor da ANPD
-- [x] Coletor do BCB
-- [x] Coletor da Câmara
-- [x] Coletor europeu de IA
-- [x] Coletor do FSB
-- [x] Coletor do BIS Innovation Hub
-- [x] Coletor de notícias da IAPP
-- [x] Coletor de publicações da OECD.AI
-- [x] Normalização compartilhada
-- [x] Persistência com SQLite
+- [x] Oito coletores oficiais
+- [x] Normalização compartilhada e persistência SQLite
 - [x] Prevenção de duplicidades
-- [x] Ranking determinístico
-- [x] Persistência das análises
-- [x] Testes automatizados de relevância
-- [x] Testes dos coletores BCB, Câmara, Comissão Europeia, FSB, BIS, IAPP e OECD.AI
+- [x] Ranking determinístico de relevância e estrelas locais
+- [x] Faixas locais de classificação auditadas
+- [x] Classificação determinística de impacto regulatório
+- [x] Pipeline unificado e monitorado
 - [x] Dashboard interativo com múltiplas fontes
-- [x] Pipeline unificado com múltiplas fontes
-- [x] Isolamento independente de falhas por fonte
-- [x] Histórico persistente das execuções do pipeline
-- [x] Monitoramento do pipeline no dashboard
-- [x] Execução automática diária às 08:00 no Windows
-- [x] Execução agendada oculta e geração de logs locais
-- [x] Classificação local determinística de uma a cinco estrelas
-- [x] Evidência e justificativa locais e auditáveis, sem APIs externas
-- [x] Testes automatizados do classificador, repositório, pipeline e consulta do dashboard
-- [ ] Outras fontes internacionais
-- [ ] Aprimoramento das regras locais de classificação determinística
-- [ ] Publicação em nuvem
-
-### Tecnologias
-
-- Python
-- Beautiful Soup
-- Requests
-- SQLAlchemy
-- SQLite
-- Streamlit
-- XML e Atom
-- APIs REST e JSON
-- Interpretação de HTML
-- Git
+- [x] Execução diária oculta no Windows
+- [x] Testes automatizados

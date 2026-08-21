@@ -63,6 +63,7 @@ def filter_articles(
     selected_sources: list[str],
     selected_levels: list[str],
     minimum_score: int,
+    minimum_impact: int,
     relevant_only: bool,
     search_query: str,
 ) -> list[DashboardArticle]:
@@ -93,6 +94,9 @@ def filter_articles(
         if article_score < minimum_score:
             continue
 
+        if (article.impact_score or 0) < minimum_impact:
+            continue
+
         if relevant_only and not article.is_relevant:
             continue
 
@@ -107,11 +111,12 @@ def filter_articles(
             article
         )
 
-    # Step 4: rank filtered articles by score and identifier.
+    # Passo 4: ordena por relevância e usa impacto como desempate.
     return sorted(
         filtered_articles,
         key=lambda article: (
             article.score or 0,
+            article.impact_score or 0,
             article.id,
         ),
         reverse=True,
@@ -231,6 +236,11 @@ def render_article_metrics(
         for article in articles
     )
 
+    high_impact_articles = sum(
+        article.impact_level in {"alto", "muito_alto", "critico"}
+        for article in articles
+    )
+
     available_scores = [
         article.score
         for article in articles
@@ -244,9 +254,7 @@ def render_article_metrics(
         else 0
     )
 
-    metric_columns = st.columns(
-        4
-    )
+    metric_columns = st.columns(5)
 
     metric_columns[0].metric(
         "Displayed articles",
@@ -264,7 +272,12 @@ def render_article_metrics(
     )
 
     metric_columns[3].metric(
-        "Average score",
+        "High impact",
+        high_impact_articles,
+    )
+
+    metric_columns[4].metric(
+        "Average relevance",
         f"{average_score:.1f}",
     )
 
@@ -364,7 +377,22 @@ def render_article(
                 "Deterministic evidence",
                 f"{article.local_evidence}/100",
             )
-            st.caption(article.local_justification or "")
+        st.caption(article.local_justification or "")
+
+        st.markdown("**Regulatory impact**")
+        if article.impact_score is None:
+            st.caption("Impact classification not available.")
+        else:
+            colunas_impacto = st.columns(2)
+            colunas_impacto[0].metric(
+                "Impact score",
+                f"{article.impact_score}/100",
+            )
+            colunas_impacto[1].metric(
+                "Impact level",
+                article.impact_level.replace("_", " ").title(),
+            )
+            st.caption(article.impact_justification or "")
 
 
 def main() -> None:
@@ -446,6 +474,13 @@ def main() -> None:
         value=0,
     )
 
+    minimum_impact = st.sidebar.slider(
+        "Minimum impact",
+        min_value=0,
+        max_value=100,
+        value=0,
+    )
+
     relevant_only = st.sidebar.checkbox(
         "Relevant articles only",
         value=False,
@@ -461,6 +496,7 @@ def main() -> None:
         selected_sources=selected_sources,
         selected_levels=selected_levels,
         minimum_score=minimum_score,
+        minimum_impact=minimum_impact,
         relevant_only=relevant_only,
         search_query=search_query,
     )

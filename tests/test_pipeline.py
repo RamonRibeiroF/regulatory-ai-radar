@@ -10,6 +10,7 @@ from regulatory_ai_radar.database.base import Base
 from regulatory_ai_radar.database.models import (
     ArticleAnalysis,
     ClassificacaoLocalArtigo,
+    ImpactoRegulatorioArtigo,
     PipelineRun,
     PipelineSourceRun,
 )
@@ -156,6 +157,7 @@ class PipelineRunnerTests(unittest.TestCase):
             classificacao_local = session.scalar(
                 select(ClassificacaoLocalArtigo)
             )
+            impacto = session.scalar(select(ImpactoRegulatorioArtigo))
 
         self.assertIsNotNone(pipeline_run)
         self.assertEqual(
@@ -170,6 +172,8 @@ class PipelineRunnerTests(unittest.TestCase):
         self.assertIsNotNone(analysis)
         self.assertIsNotNone(classificacao_local)
         self.assertEqual(classificacao_local.avaliacao_estrelas, 5)
+        self.assertIsNotNone(impacto)
+        self.assertGreater(impacto.pontuacao_impacto, 0)
 
     def test_pipeline_skips_duplicate_articles(self) -> None:
         # Step 11: configure a collector that always returns one URL.

@@ -233,6 +233,69 @@ class ClassificacaoLocalArtigo(Base):
     )
 
 
+class ImpactoRegulatorioArtigo(Base):
+    """Armazena o impacto regulatório local de uma notícia."""
+
+    __tablename__ = "impactos_regulatorios_artigos"
+
+    __table_args__ = (
+        CheckConstraint(
+            "pontuacao_impacto >= 0 AND pontuacao_impacto <= 100",
+            name="ck_impactos_pontuacao",
+        ),
+        CheckConstraint(
+            "nivel_impacto IN "
+            "('baixo', 'moderado', 'alto', 'muito_alto', 'critico')",
+            name="ck_impactos_nivel",
+        ),
+    )
+
+    # Passo 17: mantém um único impacto atual para cada notícia.
+    id: Mapped[int] = mapped_column(
+        Integer,
+        primary_key=True,
+        autoincrement=True,
+    )
+    artigo_id: Mapped[int] = mapped_column(
+        ForeignKey("news_articles.id", ondelete="CASCADE"),
+        nullable=False,
+        unique=True,
+        index=True,
+    )
+
+    # Passo 18: persiste o total e as quatro parcelas auditáveis.
+    pontuacao_impacto: Mapped[int] = mapped_column(Integer, nullable=False)
+    nivel_impacto: Mapped[str] = mapped_column(String(20), nullable=False)
+    forca_regulatoria: Mapped[int] = mapped_column(Integer, nullable=False)
+    aplicabilidade_financeira: Mapped[int] = mapped_column(
+        Integer,
+        nullable=False,
+    )
+    governanca_tecnologica: Mapped[int] = mapped_column(
+        Integer,
+        nullable=False,
+    )
+    urgencia_operacional: Mapped[int] = mapped_column(
+        Integer,
+        nullable=False,
+    )
+    evidencias: Mapped[list[str]] = mapped_column(JSON, nullable=False)
+    justificativa: Mapped[str] = mapped_column(Text, nullable=False)
+    nome_modelo: Mapped[str] = mapped_column(String(100), nullable=False)
+    versao_criterios: Mapped[str] = mapped_column(String(50), nullable=False)
+    criado_em: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        default=utc_now,
+        nullable=False,
+    )
+    atualizado_em: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        default=utc_now,
+        onupdate=utc_now,
+        nullable=False,
+    )
+
+
 class PipelineRun(Base):
     """Represent one complete automated pipeline execution."""
 
