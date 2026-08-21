@@ -31,10 +31,11 @@ The project aims to:
 - European Commission — Artificial Intelligence topic
 - Financial Stability Board (FSB)
 - Bank for International Settlements — Innovation Hub (BIS)
+- International Association of Privacy Professionals (IAPP)
 
 ### Current capabilities
 
-- Collection from six official sources
+- Collection from seven official sources
 - Explicit newest-to-oldest ordering
 - Extraction of titles, dates, summaries, content, and official URLs
 - Official domain and publication-path validation
@@ -54,7 +55,6 @@ The project aims to:
 
 ### Planned sources
 
-- International Association of Privacy Professionals (IAPP)
 - OECD.AI
 
 ### Planned features
@@ -83,7 +83,8 @@ regulatory-ai-radar
 │   ├── run_bis.py
 │   ├── run_camara.py
 │   ├── run_eu_ai_office.py
-│   └── run_fsb.py
+│   ├── run_fsb.py
+│   └── run_iapp.py
 ├── src
 │   └── regulatory_ai_radar
 │       ├── analysis
@@ -96,7 +97,8 @@ regulatory-ai-radar
 │       │   ├── bis.py
 │       │   ├── camara.py
 │       │   ├── eu_ai_office.py
-│       │   └── fsb.py
+│       │   ├── fsb.py
+│       │   └── iapp.py
 │       ├── database
 │       │   ├── __init__.py
 │       │   ├── analysis_repository.py
@@ -113,6 +115,7 @@ regulatory-ai-radar
 │   ├── test_camara_collector.py
 │   ├── test_eu_ai_office_collector.py
 │   ├── test_fsb_collector.py
+│   ├── test_iapp_collector.py
 │   └── test_relevance.py
 ├── .gitignore
 ├── pyproject.toml
@@ -218,6 +221,14 @@ This script:
 9. stores up to five recent publications;
 10. skips URLs already stored.
 
+#### Collect IAPP news articles
+
+```powershell
+python scripts\run_iapp.py
+```
+
+The script reads the official public IAPP news results, validates article URLs, removes duplicates, sorts publications from newest to oldest, and stores up to five recent records. For member-gated publications, it stores only the publicly available metadata and does not extract protected body content.
+
 #### List stored publications
 
 ```powershell
@@ -261,7 +272,7 @@ The dashboard provides:
 - number of relevant publications;
 - number of high-relevance publications;
 - average relevance score;
-- source filters for ANPD, BCB, BIS, CAMARA, EU_AI_OFFICE, and FSB;
+- source filters for ANPD, BCB, BIS, CAMARA, EU_AI_OFFICE, FSB, and IAPP;
 - relevance-level filters;
 - minimum-score selection;
 - relevant-only selection;
@@ -289,7 +300,7 @@ Run the automated test suite:
 python -m unittest discover -s tests -v
 ```
 
-The suite currently contains 32 tests covering:
+The suite currently contains 40 tests covering:
 
 - relevance score calculation;
 - relevance thresholds;
@@ -313,6 +324,11 @@ The suite currently contains 32 tests covering:
 - BIS official-path validation;
 - BIS article-content normalization;
 - BIS collection-limit enforcement;
+- IAPP structured-result extraction and ordering;
+- IAPP URL validation and duplicate removal;
+- IAPP public-body normalization;
+- protection of member-gated article bodies;
+- IAPP collection-limit enforcement;
 - zero-limit collection without network requests.
 
 ### Data normalization
@@ -482,6 +498,24 @@ The collector:
 
 This strategy uses the BIS structured data source for discovery while preserving the official HTML publication page as the public URL.
 
+#### International Association of Privacy Professionals
+
+The IAPP collector reads the public server-rendered search results from:
+
+```text
+https://iapp.org/news
+```
+
+Only HTTPS links from the official IAPP domains and article path are accepted:
+
+```text
+iapp.org
+www.iapp.org
+/news/a/<article-slug>
+```
+
+The collector validates and decodes the structured results, canonicalizes URLs, removes duplicates, and explicitly sorts candidates from newest to oldest. Public article bodies are normalized from rich-text sections. When a result is marked as member-gated, only its publicly available title, date, summary, and URL are stored; protected body content is not extracted.
+
 ### Relevance scoring
 
 The initial relevance model is deterministic and auditable. It does not use a Large Language Model.
@@ -559,13 +593,14 @@ The database file is excluded from Git.
 - [x] European AI publication collector
 - [x] FSB publication collector
 - [x] BIS Innovation Hub publication collector
+- [x] IAPP news collector
 - [x] Shared publication normalization
 - [x] SQLite persistence
 - [x] Duplicate prevention
 - [x] Deterministic relevance ranking
 - [x] Analysis persistence
 - [x] Automated relevance tests
-- [x] Automated tests for BCB, Chamber, European AI, FSB, and BIS collectors
+- [x] Automated tests for BCB, Chamber, European AI, FSB, BIS, and IAPP collectors
 - [x] Interactive multi-source dashboard
 - [ ] Additional international regulatory sources
 - [ ] AI-assisted classification
@@ -616,10 +651,11 @@ O projeto busca:
 - Comissão Europeia — tópico de Inteligência Artificial
 - Financial Stability Board (FSB)
 - Bank for International Settlements — Innovation Hub (BIS)
+- International Association of Privacy Professionals (IAPP)
 
 ### Funcionalidades atuais
 
-- Coleta de seis fontes oficiais
+- Coleta de sete fontes oficiais
 - Ordenação da publicação mais recente para a mais antiga
 - Extração de títulos, datas, resumos, conteúdo e URLs
 - Validação de domínios e caminhos oficiais
@@ -639,7 +675,6 @@ O projeto busca:
 
 ### Fontes planejadas
 
-- International Association of Privacy Professionals (IAPP)
 - OECD.AI
 
 ### Funcionalidades planejadas
@@ -668,7 +703,8 @@ regulatory-ai-radar
 │   ├── run_bis.py
 │   ├── run_camara.py
 │   ├── run_eu_ai_office.py
-│   └── run_fsb.py
+│   ├── run_fsb.py
+│   └── run_iapp.py
 ├── src
 │   └── regulatory_ai_radar
 │       ├── analysis
@@ -681,7 +717,8 @@ regulatory-ai-radar
 │       │   ├── bis.py
 │       │   ├── camara.py
 │       │   ├── eu_ai_office.py
-│       │   └── fsb.py
+│       │   ├── fsb.py
+│       │   └── iapp.py
 │       ├── database
 │       │   ├── __init__.py
 │       │   ├── analysis_repository.py
@@ -698,6 +735,7 @@ regulatory-ai-radar
 │   ├── test_camara_collector.py
 │   ├── test_eu_ai_office_collector.py
 │   ├── test_fsb_collector.py
+│   ├── test_iapp_collector.py
 │   └── test_relevance.py
 ├── .gitignore
 ├── pyproject.toml
@@ -801,6 +839,14 @@ O script:
 9. armazena até cinco publicações;
 10. ignora registros duplicados.
 
+#### Coletar notícias da IAPP
+
+```powershell
+python scripts\run_iapp.py
+```
+
+O script lê os resultados públicos oficiais da IAPP, valida as URLs dos artigos, remove duplicidades, ordena as publicações da mais recente para a mais antiga e armazena até cinco registros. Para publicações restritas a membros, somente os metadados públicos são armazenados; o conteúdo protegido do corpo não é extraído.
+
 #### Listar publicações
 
 ```powershell
@@ -837,7 +883,7 @@ Ele oferece:
 - quantidade de publicações relevantes;
 - quantidade com relevância alta;
 - média dos scores;
-- filtros para ANPD, BCB, BIS, CAMARA, EU_AI_OFFICE e FSB;
+- filtros para ANPD, BCB, BIS, CAMARA, EU_AI_OFFICE, FSB e IAPP;
 - filtro por nível;
 - score mínimo;
 - opção para exibir somente publicações relevantes;
@@ -865,7 +911,7 @@ Execute os testes:
 python -m unittest discover -s tests -v
 ```
 
-A suíte possui 32 testes e verifica:
+A suíte possui 40 testes e verifica:
 
 - cálculo e faixas do score;
 - normalização de acentos e letras;
@@ -885,6 +931,11 @@ A suíte possui 32 testes e verifica:
 - validação dos caminhos oficiais do BIS;
 - normalização do conteúdo do BIS;
 - respeito ao limite de coleta do BIS;
+- extração e ordenação dos resultados estruturados da IAPP;
+- validação de URLs e remoção de duplicidades da IAPP;
+- normalização do corpo de artigos públicos da IAPP;
+- proteção do corpo de artigos restritos a membros;
+- respeito ao limite de coleta da IAPP;
 - ausência de requisições quando o limite é zero.
 
 ### Normalização dos dados
@@ -975,6 +1026,24 @@ https://www.bis.org/publ/othp112.htm
 
 O coletor valida a resposta, normaliza os caminhos, elimina duplicidades, ordena as candidatas e abre somente as páginas necessárias para alcançar o limite.
 
+#### International Association of Privacy Professionals
+
+O coletor da IAPP lê os resultados públicos renderizados no servidor em:
+
+```text
+https://iapp.org/news
+```
+
+São aceitos somente links HTTPS dos domínios oficiais e com o caminho de artigos:
+
+```text
+iapp.org
+www.iapp.org
+/news/a/<slug-do-artigo>
+```
+
+O coletor valida e interpreta os resultados estruturados, transforma as URLs em formato canônico, elimina duplicidades e ordena explicitamente as publicações da mais recente para a mais antiga. O corpo de artigos públicos é normalizado a partir das seções de texto. Quando a publicação é restrita a membros, somente título, data, resumo e URL disponíveis publicamente são armazenados; o corpo protegido não é extraído.
+
 ### Score de relevância
 
 O modelo inicial é determinístico, auditável e não utiliza um Large Language Model.
@@ -1042,13 +1111,14 @@ As URLs são únicas e impedem duplicidades. O banco local não é enviado ao Gi
 - [x] Coletor europeu de IA
 - [x] Coletor do FSB
 - [x] Coletor do BIS Innovation Hub
+- [x] Coletor de notícias da IAPP
 - [x] Normalização compartilhada
 - [x] Persistência com SQLite
 - [x] Prevenção de duplicidades
 - [x] Ranking determinístico
 - [x] Persistência das análises
 - [x] Testes automatizados de relevância
-- [x] Testes dos coletores BCB, Câmara, Comissão Europeia, FSB e BIS
+- [x] Testes dos coletores BCB, Câmara, Comissão Europeia, FSB, BIS e IAPP
 - [x] Dashboard interativo com múltiplas fontes
 - [ ] Outras fontes internacionais
 - [ ] Classificação assistida por IA
