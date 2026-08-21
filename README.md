@@ -52,6 +52,12 @@ The project aims to:
 - Filters by source, level, minimum score, relevance, and text
 - Dynamic metrics and ranked publication cards
 - Links to original official publications
+- Unified execution of every configured source through one pipeline
+- Independent failure isolation for each source
+- Persistent pipeline and per-source execution history
+- Pipeline health, duration, collection, duplicate, and error monitoring
+- Daily automated execution at 08:00 through Windows Task Scheduler
+- Hidden scheduled execution with timestamped local logs
 - Automated collector and relevance tests
 
 ### Source roadmap
@@ -66,7 +72,6 @@ All sources planned for the initial multi-source version have been implemented. 
 - Automated summaries
 - Detection of similar publications
 - Regulatory change history
-- Daily automated collection
 - Alerts and periodic regulatory reports
 - Cloud deployment
 
@@ -79,6 +84,9 @@ regulatory-ai-radar
 ├── scripts
 │   ├── analyze_articles.py
 │   ├── list_articles.py
+│   ├── run_pipeline.py
+│   ├── run_scheduled_pipeline.ps1
+│   ├── run_scheduled_pipeline.vbs
 │   ├── run_anpd.py
 │   ├── run_bcb.py
 │   ├── run_bis.py
@@ -108,8 +116,12 @@ regulatory-ai-radar
 │       │   ├── base.py
 │       │   ├── dashboard_repository.py
 │       │   ├── models.py
+│       │   ├── pipeline_repository.py
 │       │   ├── repository.py
 │       │   └── session.py
+│       ├── pipeline
+│       │   ├── __init__.py
+│       │   └── runner.py
 │       ├── __init__.py
 │       └── entities.py
 ├── tests
@@ -120,13 +132,14 @@ regulatory-ai-radar
 │   ├── test_fsb_collector.py
 │   ├── test_iapp_collector.py
 │   ├── test_oecd_ai_collector.py
+│   ├── test_pipeline.py
 │   └── test_relevance.py
 ├── .gitignore
 ├── pyproject.toml
 └── README.md
 ```
 
-The local `data` directory is created automatically when the application initializes the database. Its contents are excluded from Git.
+The local `data` and `logs` directories are created automatically. Database files and execution logs are excluded from Git.
 
 ### Requirements
 
@@ -241,6 +254,57 @@ python scripts\run_oecd_ai.py
 
 The script requests the official public OECD.AI publication endpoint, validates structured records and slugs, builds canonical public URLs, removes duplicates, sorts results from newest to oldest, and stores up to five recent publications.
 
+#### Run the unified pipeline
+
+```powershell
+python scripts\run_pipeline.py
+```
+
+The pipeline performs the complete workflow for all eight configured sources:
+
+1. collects the most recent publications from every source;
+2. persists new records and skips URLs already stored;
+3. analyzes only publications that do not yet have an analysis;
+4. isolates failures so that one unavailable source does not stop the others;
+5. records totals, durations, statuses, and errors for the complete run and each source.
+
+The default limit is five recent publications per source. Use `--limit` to change it:
+
+```powershell
+python scripts\run_pipeline.py --limit 10
+```
+
+#### Daily scheduled execution on Windows
+
+The project includes two scheduling wrappers:
+
+```text
+scripts/run_scheduled_pipeline.ps1
+scripts/run_scheduled_pipeline.vbs
+```
+
+The PowerShell wrapper uses the project `.venv`, runs the unified pipeline, returns an operating-system exit code, and appends the complete output to:
+
+```text
+logs/scheduled_pipeline.log
+```
+
+The VBScript launcher executes the PowerShell wrapper invisibly, avoiding a console window during automatic runs.
+
+On the configured development machine, Windows Task Scheduler runs the pipeline every day at `08:00`. The task starts when the computer becomes available if the scheduled time was missed, is allowed to run on battery power, and has a two-hour execution limit. The Windows task itself is machine-specific; the versioned scripts make the automation reproducible on another Windows computer.
+
+Run the scheduled wrapper manually for validation:
+
+```powershell
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File ".\scripts\run_scheduled_pipeline.ps1"
+```
+
+Run the hidden launcher manually:
+
+```powershell
+cscript.exe //NoLogo scripts\run_scheduled_pipeline.vbs
+```
+
 #### List stored publications
 
 ```powershell
@@ -280,6 +344,9 @@ http://localhost:8501
 
 The dashboard provides:
 
+- latest pipeline run identifier, status, and completion time;
+- number of healthy sources and execution errors;
+- per-source status, duration, collected, inserted, and duplicate counts;
 - total and filtered publication metrics;
 - number of relevant publications;
 - number of high-relevance publications;
@@ -312,7 +379,7 @@ Run the automated test suite:
 python -m unittest discover -s tests -v
 ```
 
-The suite currently contains 47 tests covering:
+The suite currently contains 50 tests covering:
 
 - relevance score calculation;
 - relevance thresholds;
@@ -345,7 +412,10 @@ The suite currently contains 47 tests covering:
 - OECD.AI canonical URL and slug validation;
 - OECD.AI duplicate removal and body-summary fallback;
 - OECD.AI API ordering parameters and collection limits;
-- zero-limit collection without network requests.
+- zero-limit collection without network requests;
+- successful multi-source pipeline execution;
+- partial pipeline execution when one source fails;
+- complete pipeline failure tracking when all sources fail.
 
 ### Data normalization
 
@@ -590,6 +660,8 @@ Relevance analysis
     ↓
 Analysis persistence
     ↓
+Pipeline execution persistence and monitoring
+    ↓
 Dashboard visualization
 ```
 
@@ -608,7 +680,9 @@ SQLAlchemy provides models, sessions, queries, constraints, and transaction mana
 The database contains:
 
 - `news_articles`: normalized publications from every source;
-- `article_analyses`: relevance scores and supporting evidence.
+- `article_analyses`: relevance scores and supporting evidence;
+- `pipeline_runs`: overall status, totals, timestamps, and errors for each pipeline run;
+- `pipeline_source_runs`: status, duration, collection totals, duplicate totals, and errors for each source execution.
 
 Publication URLs are unique and prevent duplicate records. Each publication has one current analysis that is updated whenever the analysis script runs again.
 
@@ -637,9 +711,14 @@ The database file is excluded from Git.
 - [x] Automated relevance tests
 - [x] Automated tests for BCB, Chamber, European AI, FSB, BIS, IAPP, and OECD.AI collectors
 - [x] Interactive multi-source dashboard
+- [x] Unified multi-source pipeline
+- [x] Independent source failure isolation
+- [x] Persistent pipeline execution history
+- [x] Pipeline monitoring in the dashboard
+- [x] Daily automated execution at 08:00 on Windows
+- [x] Hidden scheduled execution and local log generation
 - [ ] Additional international regulatory sources
 - [ ] AI-assisted classification
-- [ ] Daily automation
 - [ ] Cloud deployment
 
 ### Technologies
@@ -707,6 +786,12 @@ O projeto busca:
 - Filtros por fonte, nível, score, relevância e texto
 - Indicadores dinâmicos e cartões de publicações
 - Links para publicações oficiais
+- Execução unificada de todas as fontes configuradas em um único pipeline
+- Isolamento independente de falhas por fonte
+- Histórico persistente das execuções gerais e de cada fonte
+- Monitoramento de saúde, duração, coleta, duplicidades e erros do pipeline
+- Execução automática diária às 08:00 pelo Agendador de Tarefas do Windows
+- Execução agendada oculta com logs locais e horários registrados
 - Testes automatizados dos coletores e da relevância
 
 ### Roteiro de fontes
@@ -721,7 +806,6 @@ Todas as fontes planejadas para a versão inicial com múltiplas fontes foram im
 - Resumos automatizados
 - Detecção de publicações semelhantes
 - Histórico de mudanças regulatórias
-- Coleta diária automatizada
 - Alertas e relatórios periódicos
 - Publicação em nuvem
 
@@ -734,6 +818,9 @@ regulatory-ai-radar
 ├── scripts
 │   ├── analyze_articles.py
 │   ├── list_articles.py
+│   ├── run_pipeline.py
+│   ├── run_scheduled_pipeline.ps1
+│   ├── run_scheduled_pipeline.vbs
 │   ├── run_anpd.py
 │   ├── run_bcb.py
 │   ├── run_bis.py
@@ -763,8 +850,12 @@ regulatory-ai-radar
 │       │   ├── base.py
 │       │   ├── dashboard_repository.py
 │       │   ├── models.py
+│       │   ├── pipeline_repository.py
 │       │   ├── repository.py
 │       │   └── session.py
+│       ├── pipeline
+│       │   ├── __init__.py
+│       │   └── runner.py
 │       ├── __init__.py
 │       └── entities.py
 ├── tests
@@ -775,13 +866,14 @@ regulatory-ai-radar
 │   ├── test_fsb_collector.py
 │   ├── test_iapp_collector.py
 │   ├── test_oecd_ai_collector.py
+│   ├── test_pipeline.py
 │   └── test_relevance.py
 ├── .gitignore
 ├── pyproject.toml
 └── README.md
 ```
 
-A pasta `data` é criada automaticamente durante a inicialização do banco e não é enviada ao Git.
+As pastas locais `data` e `logs` são criadas automaticamente. Os arquivos do banco e os logs de execução não são enviados ao Git.
 
 ### Requisitos
 
@@ -894,6 +986,57 @@ python scripts\run_oecd_ai.py
 
 O script consulta o endpoint público oficial da OECD.AI, valida os registros estruturados e os slugs, constrói URLs públicas canônicas, elimina duplicidades, ordena os resultados da publicação mais recente para a mais antiga e armazena até cinco registros.
 
+#### Executar o pipeline unificado
+
+```powershell
+python scripts\run_pipeline.py
+```
+
+O pipeline realiza o fluxo completo para as oito fontes configuradas:
+
+1. coleta as publicações mais recentes de cada fonte;
+2. persiste registros novos e ignora URLs já armazenadas;
+3. analisa somente publicações que ainda não possuem análise;
+4. isola falhas para que uma fonte indisponível não interrompa as demais;
+5. registra totais, durações, status e erros da execução completa e de cada fonte.
+
+O limite padrão é de cinco publicações recentes por fonte. Use `--limit` para alterá-lo:
+
+```powershell
+python scripts\run_pipeline.py --limit 10
+```
+
+#### Execução diária agendada no Windows
+
+O projeto contém dois iniciadores para o agendamento:
+
+```text
+scripts/run_scheduled_pipeline.ps1
+scripts/run_scheduled_pipeline.vbs
+```
+
+O iniciador PowerShell utiliza diretamente o Python da `.venv`, executa o pipeline unificado, retorna um código de saída ao sistema operacional e acrescenta a saída completa ao arquivo:
+
+```text
+logs/scheduled_pipeline.log
+```
+
+O iniciador VBScript executa o PowerShell de forma invisível, evitando a abertura de uma janela durante as coletas automáticas.
+
+Na máquina de desenvolvimento configurada, o Agendador de Tarefas do Windows executa o pipeline todos os dias às `08:00`. A tarefa inicia quando o computador volta a ficar disponível caso o horário tenha sido perdido, pode funcionar usando bateria e possui limite de duas horas por execução. A tarefa do Windows é específica de cada computador; os scripts versionados permitem reproduzir a automação em outra máquina Windows.
+
+Para validar manualmente o iniciador agendável:
+
+```powershell
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File ".\scripts\run_scheduled_pipeline.ps1"
+```
+
+Para testar o iniciador oculto:
+
+```powershell
+cscript.exe //NoLogo scripts\run_scheduled_pipeline.vbs
+```
+
 #### Listar publicações
 
 ```powershell
@@ -926,6 +1069,9 @@ http://localhost:8501
 
 Ele oferece:
 
+- identificador, status e horário da última execução do pipeline;
+- quantidade de fontes saudáveis e erros de execução;
+- status, duração, registros coletados, inseridos e duplicados por fonte;
 - indicadores totais e filtrados;
 - quantidade de publicações relevantes;
 - quantidade com relevância alta;
@@ -958,7 +1104,7 @@ Execute os testes:
 python -m unittest discover -s tests -v
 ```
 
-A suíte possui 47 testes e verifica:
+A suíte possui 50 testes e verifica:
 
 - cálculo e faixas do score;
 - normalização de acentos e letras;
@@ -987,7 +1133,10 @@ A suíte possui 47 testes e verifica:
 - validação das URLs canônicas e dos slugs da OECD.AI;
 - remoção de duplicidades e resumo alternativo da OECD.AI;
 - parâmetros de ordenação da API e limites de coleta da OECD.AI;
-- ausência de requisições quando o limite é zero.
+- ausência de requisições quando o limite é zero;
+- execução bem-sucedida do pipeline com múltiplas fontes;
+- execução parcial quando uma fonte apresenta falha;
+- registro de falha completa quando todas as fontes apresentam erro.
 
 ### Normalização dos dados
 
@@ -1147,6 +1296,8 @@ Análise de relevância
     ↓
 Persistência das análises
     ↓
+Persistência e monitoramento das execuções do pipeline
+    ↓
 Dashboard
 ```
 
@@ -1163,7 +1314,9 @@ data/regulatory_ai_radar.db
 O banco contém:
 
 - `news_articles`: publicações normalizadas;
-- `article_analyses`: scores e evidências.
+- `article_analyses`: scores e evidências;
+- `pipeline_runs`: status geral, totais, horários e erros de cada execução do pipeline;
+- `pipeline_source_runs`: status, duração, totais de coleta, duplicidades e erros de cada fonte.
 
 As URLs são únicas e impedem duplicidades. O banco local não é enviado ao Git.
 
@@ -1190,9 +1343,14 @@ As URLs são únicas e impedem duplicidades. O banco local não é enviado ao Gi
 - [x] Testes automatizados de relevância
 - [x] Testes dos coletores BCB, Câmara, Comissão Europeia, FSB, BIS, IAPP e OECD.AI
 - [x] Dashboard interativo com múltiplas fontes
+- [x] Pipeline unificado com múltiplas fontes
+- [x] Isolamento independente de falhas por fonte
+- [x] Histórico persistente das execuções do pipeline
+- [x] Monitoramento do pipeline no dashboard
+- [x] Execução automática diária às 08:00 no Windows
+- [x] Execução agendada oculta e geração de logs locais
 - [ ] Outras fontes internacionais
 - [ ] Classificação assistida por IA
-- [ ] Automação diária
 - [ ] Publicação em nuvem
 
 ### Tecnologias

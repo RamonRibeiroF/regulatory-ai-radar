@@ -1,12 +1,16 @@
+from __future__ import annotations
+
 from dataclasses import dataclass
 from datetime import datetime
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from regulatory_ai_radar.database.models import (
     ArticleAnalysis,
     NewsArticle,
+    PipelineRun,
+    PipelineSourceRun,
 )
 
 
@@ -24,6 +28,35 @@ class DashboardArticle:
     level: str
     is_relevant: bool
     matched_keywords: tuple[str, ...]
+
+
+@dataclass(frozen=True, slots=True)
+class DashboardPipelineRun:
+    """Represent the latest complete pipeline execution."""
+
+    id: int
+    status: str
+    started_at: datetime
+    finished_at: datetime | None
+    total_collected: int
+    total_inserted: int
+    total_skipped: int
+    total_analyzed: int
+    error_count: int
+
+
+@dataclass(frozen=True, slots=True)
+class DashboardSourceRun:
+    """Represent the latest pipeline result for one source."""
+
+    source: str
+    status: str
+    finished_at: datetime
+    duration_seconds: float
+    collected_count: int
+    inserted_count: int
+    skipped_count: int
+    error_message: str | None
 
 
 class DashboardRepository:
@@ -99,3 +132,84 @@ class DashboardRepository:
 
         # Step 3: return data without exposing ORM objects.
         return dashboard_articles
+
+    def get_latest_pipeline_run(
+        self,
+    ) -> DashboardPipelineRun | None:
+        """Return the most recent complete pipeline execution."""
+
+        # Step 4: locate the latest main pipeline record.
+        pipeline_run = self.session.scalar(
+            select(PipelineRun)
+            .order_by(
+                PipelineRun.id.desc()
+            )
+            .limit(1)
+        )
+
+        if pipeline_run is None:
+            return None
+
+        # Step 5: convert the ORM record into dashboard data.
+        return DashboardPipelineRun(
+            id=pipeline_run.id,
+            status=pipeline_run.status,
+            started_at=pipeline_run.started_at,
+            finished_at=pipeline_run.finished_at,
+            total_collected=pipeline_run.total_collected,
+            total_inserted=pipeline_run.total_inserted,
+            total_skipped=pipeline_run.total_skipped,
+            total_analyzed=pipeline_run.total_analyzed,
+            error_count=pipeline_run.error_count,
+        )
+
+    def list_latest_source_runs(
+        self,
+    ) -> list[DashboardSourceRun]:
+        """Return the latest execution result for every source."""
+
+        # Step 6: identify the newest record for each source.
+        latest_source_ids = (
+            select(
+                PipelineSourceRun.source,
+                func.max(
+                    PipelineSourceRun.id
+                ).label("latest_id"),
+            )
+            .group_by(
+                PipelineSourceRun.source
+            )
+            .subquery()
+        )
+
+        # Step 7: retrieve the complete latest source records.
+        statement = (
+            select(PipelineSourceRun)
+            .join(
+                latest_source_ids,
+                PipelineSourceRun.id
+                == latest_source_ids.c.latest_id,
+            )
+            .order_by(
+                PipelineSourceRun.source
+            )
+        )
+
+        source_runs = self.session.scalars(
+            statement
+        ).all()
+
+        # Step 8: return source data without exposing ORM objects.
+        return [
+            DashboardSourceRun(
+                source=source_run.source,
+                status=source_run.status,
+                finished_at=source_run.finished_at,
+                duration_seconds=source_run.duration_seconds,
+                collected_count=source_run.collected_count,
+                inserted_count=source_run.inserted_count,
+                skipped_count=source_run.skipped_count,
+                error_message=source_run.error_message,
+            )
+            for source_run in source_runs
+        ]

@@ -1,10 +1,14 @@
+from __future__ import annotations
+
 from datetime import datetime
 
 import streamlit as st
 
 from regulatory_ai_radar.database.dashboard_repository import (
     DashboardArticle,
+    DashboardPipelineRun,
     DashboardRepository,
+    DashboardSourceRun,
 )
 from regulatory_ai_radar.database.session import (
     SessionFactory,
@@ -12,10 +16,14 @@ from regulatory_ai_radar.database.session import (
 )
 
 
-# Step 1: load dashboard data with a short cache.
+# Step 1: load dashboard and pipeline data with a short cache.
 @st.cache_data(ttl=60)
-def load_articles() -> list[DashboardArticle]:
-    """Load articles and analyses from the local database."""
+def load_dashboard_data() -> tuple[
+    list[DashboardArticle],
+    DashboardPipelineRun | None,
+    list[DashboardSourceRun],
+]:
+    """Load articles, analyses, and pipeline monitoring data."""
 
     initialize_database()
 
@@ -24,20 +32,28 @@ def load_articles() -> list[DashboardArticle]:
             session
         )
 
-        return repository.list_articles()
+        articles = repository.list_articles()
+        pipeline_run = repository.get_latest_pipeline_run()
+        source_runs = repository.list_latest_source_runs()
+
+    return (
+        articles,
+        pipeline_run,
+        source_runs,
+    )
 
 
-# Step 2: format publication dates for display.
-def format_publication_date(
-    publication_date: datetime | None,
+# Step 2: format dates for dashboard display.
+def format_datetime(
+    date_value: datetime | None,
 ) -> str:
-    """Format a publication date or return a fallback value."""
+    """Format a date or return a fallback value."""
 
-    if publication_date is None:
+    if date_value is None:
         return "Not available"
 
-    return publication_date.strftime(
-        "%Y-%m-%d %H:%M"
+    return date_value.strftime(
+        "%Y-%m-%d %H:%M:%S"
     )
 
 
@@ -102,11 +118,104 @@ def filter_articles(
     )
 
 
-# Step 5: display summary metrics for the current selection.
-def render_metrics(
+# Step 5: display pipeline monitoring information.
+def render_pipeline_monitoring(
+    pipeline_run: DashboardPipelineRun | None,
+    source_runs: list[DashboardSourceRun],
+) -> None:
+    """Render the latest pipeline execution and source statuses."""
+
+    st.subheader(
+        "Pipeline monitoring"
+    )
+
+    if pipeline_run is None:
+        st.info(
+            "No automated pipeline execution has been recorded yet."
+        )
+        return
+
+    successful_sources = sum(
+        source_run.status == "success"
+        for source_run in source_runs
+    )
+
+    monitoring_columns = st.columns(
+        4
+    )
+
+    monitoring_columns[0].metric(
+        "Last pipeline run",
+        f"#{pipeline_run.id}",
+    )
+
+    monitoring_columns[1].metric(
+        "Pipeline status",
+        pipeline_run.status.title(),
+    )
+
+    monitoring_columns[2].metric(
+        "Healthy sources",
+        f"{successful_sources}/{len(source_runs)}",
+    )
+
+    monitoring_columns[3].metric(
+        "Execution errors",
+        pipeline_run.error_count,
+    )
+
+    st.caption(
+        "Last completed at: "
+        f"{format_datetime(pipeline_run.finished_at)}"
+    )
+
+    # Step 6: display detailed observability for every source.
+    with st.expander(
+        "Source execution details",
+        expanded=False,
+    ):
+        source_rows = [
+            {
+                "Source": source_run.source,
+                "Status": source_run.status.title(),
+                "Finished at": format_datetime(
+                    source_run.finished_at
+                ),
+                "Duration (seconds)": round(
+                    source_run.duration_seconds,
+                    2,
+                ),
+                "Collected": source_run.collected_count,
+                "Inserted": source_run.inserted_count,
+                "Duplicates": source_run.skipped_count,
+            }
+            for source_run in source_runs
+        ]
+
+        st.dataframe(
+            source_rows,
+            hide_index=True,
+            use_container_width=True,
+        )
+
+        failed_source_runs = [
+            source_run
+            for source_run in source_runs
+            if source_run.status == "failed"
+        ]
+
+        for source_run in failed_source_runs:
+            st.error(
+                f"{source_run.source}: "
+                f"{source_run.error_message or 'Unknown error'}"
+            )
+
+
+# Step 7: display summary metrics for the current selection.
+def render_article_metrics(
     articles: list[DashboardArticle],
 ) -> None:
-    """Render dashboard summary metrics."""
+    """Render article summary metrics."""
 
     total_articles = len(
         articles
@@ -160,7 +269,7 @@ def render_metrics(
     )
 
 
-# Step 6: display one regulatory news card.
+# Step 8: display one regulatory news card.
 def render_article(
     article: DashboardArticle,
     position: int,
@@ -210,7 +319,7 @@ def render_article(
 
         st.write(
             "**Published at:** "
-            f"{format_publication_date(article.published_at)}"
+            f"{format_datetime(article.published_at)}"
         )
 
         if article.summary:
@@ -239,14 +348,14 @@ def render_article(
 def main() -> None:
     """Render the Regulatory AI Radar dashboard."""
 
-    # Step 7: configure the browser tab and dashboard layout.
+    # Step 9: configure the browser tab and dashboard layout.
     st.set_page_config(
         page_title="Regulatory AI Radar",
         page_icon="⚖️",
         layout="wide",
     )
 
-    # Step 8: display the dashboard title and description.
+    # Step 10: display the dashboard title and description.
     st.title(
         "Regulatory AI Radar"
     )
@@ -256,16 +365,28 @@ def main() -> None:
         "data protection, governance, and financial regulation."
     )
 
-    articles = load_articles()
+    (
+        articles,
+        pipeline_run,
+        source_runs,
+    ) = load_dashboard_data()
+
+    # Step 11: display automation and source health information.
+    render_pipeline_monitoring(
+        pipeline_run=pipeline_run,
+        source_runs=source_runs,
+    )
+
+    st.divider()
 
     if not articles:
         st.warning(
             "No articles are currently stored. "
-            "Run the ANPD collector before opening the dashboard."
+            "Run the automated pipeline before opening the dashboard."
         )
         return
 
-    # Step 9: create the interactive sidebar filters.
+    # Step 12: create the interactive sidebar filters.
     st.sidebar.header(
         "Filters"
     )
@@ -322,8 +443,8 @@ def main() -> None:
         search_query=search_query,
     )
 
-    # Step 10: display metrics and ranked articles.
-    render_metrics(
+    # Step 13: display article metrics and ranked publications.
+    render_article_metrics(
         filtered_articles
     )
 

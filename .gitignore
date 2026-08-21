@@ -26,3 +26,6 @@ data/
 # Operating system
 .DS_Store
 Thumbs.db
+
+# Generated pipeline execution logs
+logs/
