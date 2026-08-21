@@ -32,10 +32,11 @@ The project aims to:
 - Financial Stability Board (FSB)
 - Bank for International Settlements — Innovation Hub (BIS)
 - International Association of Privacy Professionals (IAPP)
+- OECD.AI Policy Observatory
 
 ### Current capabilities
 
-- Collection from seven official sources
+- Collection from eight official sources
 - Explicit newest-to-oldest ordering
 - Extraction of titles, dates, summaries, content, and official URLs
 - Official domain and publication-path validation
@@ -53,9 +54,9 @@ The project aims to:
 - Links to original official publications
 - Automated collector and relevance tests
 
-### Planned sources
+### Source roadmap
 
-- OECD.AI
+All sources planned for the initial multi-source version have been implemented. Future sources will be selected according to regulatory relevance, public availability, and technical stability.
 
 ### Planned features
 
@@ -84,7 +85,8 @@ regulatory-ai-radar
 │   ├── run_camara.py
 │   ├── run_eu_ai_office.py
 │   ├── run_fsb.py
-│   └── run_iapp.py
+│   ├── run_iapp.py
+│   └── run_oecd_ai.py
 ├── src
 │   └── regulatory_ai_radar
 │       ├── analysis
@@ -98,7 +100,8 @@ regulatory-ai-radar
 │       │   ├── camara.py
 │       │   ├── eu_ai_office.py
 │       │   ├── fsb.py
-│       │   └── iapp.py
+│       │   ├── iapp.py
+│       │   └── oecd_ai.py
 │       ├── database
 │       │   ├── __init__.py
 │       │   ├── analysis_repository.py
@@ -116,6 +119,7 @@ regulatory-ai-radar
 │   ├── test_eu_ai_office_collector.py
 │   ├── test_fsb_collector.py
 │   ├── test_iapp_collector.py
+│   ├── test_oecd_ai_collector.py
 │   └── test_relevance.py
 ├── .gitignore
 ├── pyproject.toml
@@ -229,6 +233,14 @@ python scripts\run_iapp.py
 
 The script reads the official public IAPP news results, validates article URLs, removes duplicates, sorts publications from newest to oldest, and stores up to five recent records. For member-gated publications, it stores only the publicly available metadata and does not extract protected body content.
 
+#### Collect OECD.AI publications
+
+```powershell
+python scripts\run_oecd_ai.py
+```
+
+The script requests the official public OECD.AI publication endpoint, validates structured records and slugs, builds canonical public URLs, removes duplicates, sorts results from newest to oldest, and stores up to five recent publications.
+
 #### List stored publications
 
 ```powershell
@@ -272,7 +284,7 @@ The dashboard provides:
 - number of relevant publications;
 - number of high-relevance publications;
 - average relevance score;
-- source filters for ANPD, BCB, BIS, CAMARA, EU_AI_OFFICE, FSB, and IAPP;
+- source filters for ANPD, BCB, BIS, CAMARA, EU_AI_OFFICE, FSB, IAPP, and OECD_AI;
 - relevance-level filters;
 - minimum-score selection;
 - relevant-only selection;
@@ -300,7 +312,7 @@ Run the automated test suite:
 python -m unittest discover -s tests -v
 ```
 
-The suite currently contains 40 tests covering:
+The suite currently contains 47 tests covering:
 
 - relevance score calculation;
 - relevance thresholds;
@@ -329,6 +341,10 @@ The suite currently contains 40 tests covering:
 - IAPP public-body normalization;
 - protection of member-gated article bodies;
 - IAPP collection-limit enforcement;
+- OECD.AI structured-record ordering and normalization;
+- OECD.AI canonical URL and slug validation;
+- OECD.AI duplicate removal and body-summary fallback;
+- OECD.AI API ordering parameters and collection limits;
 - zero-limit collection without network requests.
 
 ### Data normalization
@@ -516,6 +532,24 @@ www.iapp.org
 
 The collector validates and decodes the structured results, canonicalizes URLs, removes duplicates, and explicitly sorts candidates from newest to oldest. Public article bodies are normalized from rich-text sections. When a result is marked as member-gated, only its publicly available title, date, summary, and URL are stored; protected body content is not extracted.
 
+#### OECD.AI Policy Observatory
+
+The OECD.AI collector uses the platform's public WordPress REST endpoint:
+
+```text
+https://wp.oecd.ai/wp-json/wp/v2/ai-publications
+```
+
+The request explicitly orders records by publication date in descending order. Structured titles, excerpts, bodies, dates, and slugs are validated and normalized. Only slugs containing lowercase letters, numbers, and hyphens are accepted.
+
+The API slug is converted into the canonical public OECD.AI page:
+
+```text
+https://oecd.ai/en/ai-publications/<publication-slug>
+```
+
+The collector requests extra recent candidates for validation, removes duplicate canonical URLs, selects the requested number of valid publications, and preserves newest-to-oldest ordering.
+
 ### Relevance scoring
 
 The initial relevance model is deterministic and auditable. It does not use a Large Language Model.
@@ -594,13 +628,14 @@ The database file is excluded from Git.
 - [x] FSB publication collector
 - [x] BIS Innovation Hub publication collector
 - [x] IAPP news collector
+- [x] OECD.AI publication collector
 - [x] Shared publication normalization
 - [x] SQLite persistence
 - [x] Duplicate prevention
 - [x] Deterministic relevance ranking
 - [x] Analysis persistence
 - [x] Automated relevance tests
-- [x] Automated tests for BCB, Chamber, European AI, FSB, BIS, and IAPP collectors
+- [x] Automated tests for BCB, Chamber, European AI, FSB, BIS, IAPP, and OECD.AI collectors
 - [x] Interactive multi-source dashboard
 - [ ] Additional international regulatory sources
 - [ ] AI-assisted classification
@@ -652,10 +687,11 @@ O projeto busca:
 - Financial Stability Board (FSB)
 - Bank for International Settlements — Innovation Hub (BIS)
 - International Association of Privacy Professionals (IAPP)
+- Observatório de Políticas de IA da OCDE (OECD.AI)
 
 ### Funcionalidades atuais
 
-- Coleta de sete fontes oficiais
+- Coleta de oito fontes oficiais
 - Ordenação da publicação mais recente para a mais antiga
 - Extração de títulos, datas, resumos, conteúdo e URLs
 - Validação de domínios e caminhos oficiais
@@ -673,9 +709,9 @@ O projeto busca:
 - Links para publicações oficiais
 - Testes automatizados dos coletores e da relevância
 
-### Fontes planejadas
+### Roteiro de fontes
 
-- OECD.AI
+Todas as fontes planejadas para a versão inicial com múltiplas fontes foram implementadas. Fontes futuras serão selecionadas conforme relevância regulatória, disponibilidade pública e estabilidade técnica.
 
 ### Funcionalidades planejadas
 
@@ -704,7 +740,8 @@ regulatory-ai-radar
 │   ├── run_camara.py
 │   ├── run_eu_ai_office.py
 │   ├── run_fsb.py
-│   └── run_iapp.py
+│   ├── run_iapp.py
+│   └── run_oecd_ai.py
 ├── src
 │   └── regulatory_ai_radar
 │       ├── analysis
@@ -718,7 +755,8 @@ regulatory-ai-radar
 │       │   ├── camara.py
 │       │   ├── eu_ai_office.py
 │       │   ├── fsb.py
-│       │   └── iapp.py
+│       │   ├── iapp.py
+│       │   └── oecd_ai.py
 │       ├── database
 │       │   ├── __init__.py
 │       │   ├── analysis_repository.py
@@ -736,6 +774,7 @@ regulatory-ai-radar
 │   ├── test_eu_ai_office_collector.py
 │   ├── test_fsb_collector.py
 │   ├── test_iapp_collector.py
+│   ├── test_oecd_ai_collector.py
 │   └── test_relevance.py
 ├── .gitignore
 ├── pyproject.toml
@@ -847,6 +886,14 @@ python scripts\run_iapp.py
 
 O script lê os resultados públicos oficiais da IAPP, valida as URLs dos artigos, remove duplicidades, ordena as publicações da mais recente para a mais antiga e armazena até cinco registros. Para publicações restritas a membros, somente os metadados públicos são armazenados; o conteúdo protegido do corpo não é extraído.
 
+#### Coletar publicações da OECD.AI
+
+```powershell
+python scripts\run_oecd_ai.py
+```
+
+O script consulta o endpoint público oficial da OECD.AI, valida os registros estruturados e os slugs, constrói URLs públicas canônicas, elimina duplicidades, ordena os resultados da publicação mais recente para a mais antiga e armazena até cinco registros.
+
 #### Listar publicações
 
 ```powershell
@@ -883,7 +930,7 @@ Ele oferece:
 - quantidade de publicações relevantes;
 - quantidade com relevância alta;
 - média dos scores;
-- filtros para ANPD, BCB, BIS, CAMARA, EU_AI_OFFICE, FSB e IAPP;
+- filtros para ANPD, BCB, BIS, CAMARA, EU_AI_OFFICE, FSB, IAPP e OECD_AI;
 - filtro por nível;
 - score mínimo;
 - opção para exibir somente publicações relevantes;
@@ -911,7 +958,7 @@ Execute os testes:
 python -m unittest discover -s tests -v
 ```
 
-A suíte possui 40 testes e verifica:
+A suíte possui 47 testes e verifica:
 
 - cálculo e faixas do score;
 - normalização de acentos e letras;
@@ -936,6 +983,10 @@ A suíte possui 40 testes e verifica:
 - normalização do corpo de artigos públicos da IAPP;
 - proteção do corpo de artigos restritos a membros;
 - respeito ao limite de coleta da IAPP;
+- ordenação e normalização dos registros estruturados da OECD.AI;
+- validação das URLs canônicas e dos slugs da OECD.AI;
+- remoção de duplicidades e resumo alternativo da OECD.AI;
+- parâmetros de ordenação da API e limites de coleta da OECD.AI;
 - ausência de requisições quando o limite é zero.
 
 ### Normalização dos dados
@@ -1044,6 +1095,24 @@ www.iapp.org
 
 O coletor valida e interpreta os resultados estruturados, transforma as URLs em formato canônico, elimina duplicidades e ordena explicitamente as publicações da mais recente para a mais antiga. O corpo de artigos públicos é normalizado a partir das seções de texto. Quando a publicação é restrita a membros, somente título, data, resumo e URL disponíveis publicamente são armazenados; o corpo protegido não é extraído.
 
+#### Observatório de Políticas de IA da OCDE
+
+O coletor da OECD.AI utiliza o endpoint público REST do WordPress da plataforma:
+
+```text
+https://wp.oecd.ai/wp-json/wp/v2/ai-publications
+```
+
+A requisição ordena explicitamente os registros pela data de publicação em ordem decrescente. Títulos, resumos, corpos, datas e slugs estruturados são validados e normalizados. Somente slugs formados por letras minúsculas, números e hífens são aceitos.
+
+O slug da API é convertido na página pública canônica da OECD.AI:
+
+```text
+https://oecd.ai/en/ai-publications/<slug-da-publicacao>
+```
+
+O coletor solicita candidatos recentes adicionais para validação, remove URLs canônicas duplicadas, seleciona a quantidade solicitada de publicações válidas e preserva a ordenação da mais recente para a mais antiga.
+
 ### Score de relevância
 
 O modelo inicial é determinístico, auditável e não utiliza um Large Language Model.
@@ -1112,13 +1181,14 @@ As URLs são únicas e impedem duplicidades. O banco local não é enviado ao Gi
 - [x] Coletor do FSB
 - [x] Coletor do BIS Innovation Hub
 - [x] Coletor de notícias da IAPP
+- [x] Coletor de publicações da OECD.AI
 - [x] Normalização compartilhada
 - [x] Persistência com SQLite
 - [x] Prevenção de duplicidades
 - [x] Ranking determinístico
 - [x] Persistência das análises
 - [x] Testes automatizados de relevância
-- [x] Testes dos coletores BCB, Câmara, Comissão Europeia, FSB, BIS e IAPP
+- [x] Testes dos coletores BCB, Câmara, Comissão Europeia, FSB, BIS, IAPP e OECD.AI
 - [x] Dashboard interativo com múltiplas fontes
 - [ ] Outras fontes internacionais
 - [ ] Classificação assistida por IA
