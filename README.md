@@ -10,16 +10,17 @@ Regulatory AI Radar is a regulatory intelligence project focused on
 Artificial Intelligence, governance, risk, data protection, and
 financial-sector regulation.
 
-The application collects publications from regulatory and institutional
-sources, stores normalized information, calculates an auditable
-regulatory relevance score, and presents the results in an interactive
-dashboard.
+The application collects publications from regulatory, financial, and
+legislative sources, stores normalized information, calculates an
+auditable regulatory relevance score, and presents the results in an
+interactive dashboard.
 
 ### Objective
 
 The project aims to:
 
-- automate the collection of regulatory news and publications;
+- automate the collection of regulatory news and legislative
+  propositions;
 - identify content related to Artificial Intelligence;
 - organize publications from multiple regulatory sources;
 - prevent duplicate records;
@@ -31,17 +32,21 @@ The project aims to:
 
 - Brazilian National Data Protection Authority (ANPD)
 - Central Bank of Brazil (BCB)
+- Brazilian Chamber of Deputies
 
 ### Current capabilities
 
 - Collection of official ANPD news
 - Collection of official BCB news through its Atom feed
-- Explicit newest-to-oldest article ordering
-- Extraction of article metadata and content
+- Collection of legislative propositions through the official Chamber
+  of Deputies API
+- Search for legislative propositions by regulatory topics
+- Explicit newest-to-oldest publication ordering
+- Extraction of publication metadata and content
 - Normalization through a shared news structure
 - Local persistence with SQLite
 - Database mapping and queries with SQLAlchemy
-- Duplicate prevention based on article URLs
+- Duplicate prevention based on publication URLs
 - Deterministic regulatory relevance scoring
 - Keyword and category evidence for every score
 - Ranking from highest to lowest relevance
@@ -49,12 +54,11 @@ The project aims to:
 - Automated tests for scoring and collection rules
 - Interactive Streamlit dashboard
 - Filters by source, relevance level, minimum score, and text
-- Dynamic metrics and ranked regulatory news cards
-- Links to the original regulatory publications
+- Dynamic metrics and ranked regulatory publication cards
+- Links to the original official publications
 
 ### Planned sources
 
-- Brazilian Chamber of Deputies
 - European AI Office
 - Financial Stability Board
 - Bank for International Settlements
@@ -83,7 +87,8 @@ regulatory-ai-radar
 │   ├── analyze_articles.py
 │   ├── list_articles.py
 │   ├── run_anpd.py
-│   └── run_bcb.py
+│   ├── run_bcb.py
+│   └── run_camara.py
 ├── src
 │   └── regulatory_ai_radar
 │       ├── analysis
@@ -92,7 +97,8 @@ regulatory-ai-radar
 │       ├── collectors
 │       │   ├── __init__.py
 │       │   ├── anpd.py
-│       │   └── bcb.py
+│       │   ├── bcb.py
+│       │   └── camara.py
 │       ├── database
 │       │   ├── __init__.py
 │       │   ├── analysis_repository.py
@@ -105,6 +111,7 @@ regulatory-ai-radar
 │       └── entities.py
 ├── tests
 │   ├── test_bcb_collector.py
+│   ├── test_camara_collector.py
 │   └── test_relevance.py
 ├── .gitignore
 ├── pyproject.toml
@@ -119,7 +126,7 @@ to Git.
 
 - Python 3.12 or later
 - Git
-- Internet connection for news collection
+- Internet connection for publication collection
 - Modern web browser for the dashboard
 
 ### Installation
@@ -184,18 +191,36 @@ This script:
 5. sorts articles explicitly from newest to oldest;
 6. selects up to five recent articles;
 7. stores new articles;
-8. skips articles whose URLs already exist.
+8. skips URLs that already exist.
 
-#### List stored articles
+#### Collect and store Chamber of Deputies propositions
+
+```powershell
+python scripts\run_camara.py
+```
+
+This script:
+
+1. accesses the official Chamber of Deputies API;
+2. searches recent propositions using regulatory keywords;
+3. limits the search to selected legislative proposition types;
+4. searches propositions presented during the last 90 days;
+5. removes propositions returned by multiple searches;
+6. sorts all valid propositions from newest to oldest;
+7. selects up to five recent propositions;
+8. stores new propositions;
+9. skips URLs that already exist.
+
+#### List stored publications
 
 ```powershell
 python scripts\list_articles.py
 ```
 
 This script reads the local database and displays the main information
-for every stored article.
+for every stored publication.
 
-#### Analyze and rank stored articles
+#### Analyze and rank stored publications
 
 ```powershell
 python scripts\analyze_articles.py
@@ -203,15 +228,15 @@ python scripts\analyze_articles.py
 
 This script:
 
-1. reads the stored articles from every source;
+1. reads the stored publications from every source;
 2. analyzes their title, summary, and body;
 3. calculates an explainable relevance score;
-4. classifies each article as low, medium, or high relevance;
+4. classifies each publication as low, medium, or high relevance;
 5. stores or updates the analysis;
-6. ranks the articles from highest to lowest score.
+6. ranks the publications from highest to lowest score.
 
-Run the analysis script again after collecting news from any source so
-that the new articles receive relevance scores.
+Run the analysis script again after collecting publications from any
+source so that the new records receive relevance scores.
 
 #### Launch the dashboard
 
@@ -227,17 +252,17 @@ http://localhost:8501
 
 The dashboard provides:
 
-- total and filtered article metrics;
-- number of relevant articles;
-- number of high-relevance articles;
+- total and filtered publication metrics;
+- number of relevant publications;
+- number of high-relevance publications;
 - average relevance score;
-- filters for ANPD, BCB, and future sources;
+- filters for ANPD, BCB, CAMARA, and future sources;
 - filters by relevance level;
 - minimum score selection;
 - relevant-only selection;
 - text search;
-- ranked regulatory news cards;
-- links to original publications.
+- ranked regulatory publication cards;
+- links to original official publications.
 
 To stop the local dashboard server, return to the terminal and press:
 
@@ -259,7 +284,7 @@ This command checks the project files for syntax and indentation errors.
 python -m unittest discover -s tests -v
 ```
 
-The automated tests validate:
+The automated test suite currently contains 14 tests and validates:
 
 - relevance score calculation;
 - relevance thresholds;
@@ -268,8 +293,13 @@ The automated tests validate:
 - BCB Atom feed parsing;
 - newest-to-oldest BCB ordering;
 - BCB URL normalization;
-- rejection of external domains;
-- collection limits without unnecessary network requests.
+- rejection of external BCB domains;
+- BCB collection limits without unnecessary network requests;
+- newest-to-oldest Chamber proposition ordering;
+- Chamber proposition normalization;
+- removal of duplicate Chamber search results;
+- Chamber collection limits without unnecessary network requests;
+- rejection of invalid Chamber search periods.
 
 ### Data normalization
 
@@ -313,6 +343,61 @@ www.bcb.gov.br
 Query parameters and URL fragments are removed before persistence to
 improve duplicate detection.
 
+### Chamber of Deputies collection strategy
+
+The Chamber collector uses the official Open Data REST API:
+
+```text
+https://dadosabertos.camara.leg.br/api/v2/proposicoes
+```
+
+The collector searches propositions associated with the following
+regulatory topics:
+
+```text
+artificial intelligence
+algorithms
+data protection
+personal data
+cybersecurity
+virtual assets
+financial system
+central bank
+```
+
+The original API searches are performed in Portuguese.
+
+The collector currently considers these proposition types:
+
+```text
+PL
+PLP
+PEC
+MPV
+PDL
+```
+
+The default search period covers the last 90 days. Results returned by
+multiple keyword searches are deduplicated through their official
+proposition identifiers.
+
+All valid results are explicitly sorted by presentation date before the
+final limit is applied. This ensures that the collector selects the most
+recent propositions across every configured topic.
+
+Each proposition is linked to its official public tracking page:
+
+```text
+https://www.camara.leg.br/proposicoesWeb/fichadetramitacao
+```
+
+The proposition identifier is retained in the URL so that each record
+remains unique and opens the correct legislative page.
+
+The collection step identifies potential regulatory publications. The
+relevance analyzer subsequently decides whether each proposition has
+low, medium, or high relevance for the project.
+
 ### Relevance scoring
 
 The initial relevance model is deterministic and auditable. It does not
@@ -343,19 +428,19 @@ for future Artificial Intelligence analysis.
 The Streamlit dashboard reads the local SQLite database through a
 dedicated read-only repository.
 
-The interface does not execute news collection or modify relevance
-scores. Collection and analysis remain separate operations.
+The interface does not execute publication collection or modify
+relevance scores. Collection and analysis remain separate operations.
 
 This separation keeps the responsibilities clear:
 
 ```text
-Regulatory sources
+Regulatory and legislative sources
     ↓
 Source collectors
     ↓
-News normalization
+Publication normalization
     ↓
-News persistence
+Publication persistence
     ↓
 Relevance analysis
     ↓
@@ -381,12 +466,13 @@ and transaction management.
 
 The database currently contains:
 
-- `news_articles`: normalized regulatory news from every source;
+- `news_articles`: normalized regulatory publications from every
+  source;
 - `article_analyses`: relevance scores and supporting evidence.
 
-Article URLs are unique and prevent duplicate news records. Each article
-has one current analysis, which is updated when the scoring script runs
-again.
+Publication URLs are unique and prevent duplicate records. Each
+publication has one current analysis, which is updated when the scoring
+script runs again.
 
 The database file is local and is excluded from Git.
 
@@ -399,16 +485,18 @@ The database file is local and is excluded from Git.
 - [x] Initial project structure
 - [x] ANPD news collector
 - [x] BCB news collector
-- [x] Shared news normalization
+- [x] Chamber of Deputies proposition collector
+- [x] Shared publication normalization
 - [x] Database persistence
 - [x] Duplicate prevention
-- [x] Stored article listing
+- [x] Stored publication listing
 - [x] Deterministic relevance ranking
 - [x] Analysis persistence
 - [x] Automated scoring tests
 - [x] Automated BCB collector tests
+- [x] Automated Chamber collector tests
 - [x] Interactive multi-source dashboard
-- [ ] Additional regulatory sources
+- [ ] Additional international regulatory sources
 - [ ] Artificial Intelligence classification
 - [ ] Daily automation
 - [ ] Cloud deployment
@@ -422,6 +510,7 @@ The database file is local and is excluded from Git.
 - SQLite
 - Streamlit
 - XML and Atom
+- REST APIs and JSON
 - Git
 
 ---
@@ -434,16 +523,17 @@ O Regulatory AI Radar é um projeto de inteligência regulatória voltado
 ao acompanhamento de Inteligência Artificial, governança, riscos,
 proteção de dados e regulação do setor financeiro.
 
-A aplicação coleta publicações de fontes regulatórias e institucionais,
-armazena informações normalizadas, calcula um score auditável de
-relevância regulatória e apresenta os resultados em um dashboard
-interativo.
+A aplicação coleta publicações de fontes regulatórias, financeiras e
+legislativas, armazena informações normalizadas, calcula um score
+auditável de relevância regulatória e apresenta os resultados em um
+dashboard interativo.
 
 ### Objetivo
 
 O projeto tem como objetivos:
 
-- automatizar a coleta de notícias e publicações regulatórias;
+- automatizar a coleta de notícias regulatórias e proposições
+  legislativas;
 - identificar conteúdos relacionados à Inteligência Artificial;
 - organizar publicações de diferentes fontes regulatórias;
 - impedir o armazenamento de registros duplicados;
@@ -456,13 +546,17 @@ O projeto tem como objetivos:
 
 - Agência Nacional de Proteção de Dados (ANPD)
 - Banco Central do Brasil (BCB)
+- Câmara dos Deputados
 
 ### Funcionalidades atuais
 
 - Coleta de notícias oficiais da ANPD
 - Coleta de notícias oficiais do BCB por meio de seu feed Atom
-- Ordenação explícita das notícias da mais recente para a mais antiga
-- Extração dos metadados e do conteúdo das notícias
+- Coleta de proposições legislativas por meio da API oficial da Câmara
+  dos Deputados
+- Pesquisa de proposições legislativas por temas regulatórios
+- Ordenação explícita das publicações da mais recente para a mais antiga
+- Extração dos metadados e do conteúdo das publicações
 - Normalização por meio de uma estrutura compartilhada
 - Persistência local com SQLite
 - Mapeamento e consultas ao banco com SQLAlchemy
@@ -474,12 +568,11 @@ O projeto tem como objetivos:
 - Testes automatizados para as regras de score e coleta
 - Dashboard interativo com Streamlit
 - Filtros por fonte, nível de relevância, score mínimo e texto
-- Indicadores dinâmicos e cartões de notícias ranqueadas
-- Links para as publicações regulatórias originais
+- Indicadores dinâmicos e cartões de publicações ranqueadas
+- Links para as publicações oficiais originais
 
 ### Fontes planejadas
 
-- Câmara dos Deputados
 - European AI Office
 - Financial Stability Board
 - Bank for International Settlements
@@ -508,7 +601,8 @@ regulatory-ai-radar
 │   ├── analyze_articles.py
 │   ├── list_articles.py
 │   ├── run_anpd.py
-│   └── run_bcb.py
+│   ├── run_bcb.py
+│   └── run_camara.py
 ├── src
 │   └── regulatory_ai_radar
 │       ├── analysis
@@ -517,7 +611,8 @@ regulatory-ai-radar
 │       ├── collectors
 │       │   ├── __init__.py
 │       │   ├── anpd.py
-│       │   └── bcb.py
+│       │   ├── bcb.py
+│       │   └── camara.py
 │       ├── database
 │       │   ├── __init__.py
 │       │   ├── analysis_repository.py
@@ -530,6 +625,7 @@ regulatory-ai-radar
 │       └── entities.py
 ├── tests
 │   ├── test_bcb_collector.py
+│   ├── test_camara_collector.py
 │   └── test_relevance.py
 ├── .gitignore
 ├── pyproject.toml
@@ -543,7 +639,7 @@ inicializa o banco. Seu conteúdo não é enviado ao Git.
 
 - Python 3.12 ou superior
 - Git
-- Conexão com a internet para realizar a coleta
+- Conexão com a internet para realizar as coletas
 - Navegador moderno para acessar o dashboard
 
 ### Instalação
@@ -610,16 +706,35 @@ Esse script:
 7. armazena as notícias novas;
 8. ignora URLs que já estejam cadastradas.
 
-#### Listar as notícias armazenadas
+#### Coletar e armazenar proposições da Câmara
+
+```powershell
+python scripts\run_camara.py
+```
+
+Esse script:
+
+1. acessa a API oficial da Câmara dos Deputados;
+2. pesquisa proposições recentes por palavras-chave regulatórias;
+3. limita a pesquisa aos tipos de proposições legislativas selecionados;
+4. pesquisa proposições apresentadas nos últimos 90 dias;
+5. remove proposições encontradas por mais de uma pesquisa;
+6. ordena todos os resultados válidos da data mais recente para a mais
+   antiga;
+7. seleciona até cinco proposições recentes;
+8. armazena as novas proposições;
+9. ignora URLs que já estejam cadastradas.
+
+#### Listar as publicações armazenadas
 
 ```powershell
 python scripts\list_articles.py
 ```
 
 Esse script consulta o banco local e apresenta as principais
-informações de cada notícia armazenada.
+informações de cada publicação armazenada.
 
-#### Analisar e classificar as notícias armazenadas
+#### Analisar e classificar as publicações armazenadas
 
 ```powershell
 python scripts\analyze_articles.py
@@ -627,15 +742,15 @@ python scripts\analyze_articles.py
 
 Esse script:
 
-1. consulta as notícias armazenadas de todas as fontes;
+1. consulta as publicações armazenadas de todas as fontes;
 2. analisa o título, o resumo e o corpo;
 3. calcula um score de relevância explicável;
-4. classifica cada notícia como de relevância baixa, média ou alta;
+4. classifica cada publicação como de relevância baixa, média ou alta;
 5. armazena ou atualiza a análise;
-6. ordena as notícias da maior para a menor pontuação.
+6. ordena as publicações da maior para a menor pontuação.
 
-Execute novamente o script de análise depois de coletar notícias de
-qualquer fonte para que os novos artigos recebam seus scores.
+Execute novamente o script de análise depois de coletar publicações de
+qualquer fonte para que os novos registros recebam seus scores.
 
 #### Iniciar o dashboard
 
@@ -652,17 +767,17 @@ http://localhost:8501
 
 O dashboard oferece:
 
-- total de notícias encontradas pelos filtros;
-- quantidade de notícias relevantes;
-- quantidade de notícias com relevância alta;
+- total de publicações encontradas pelos filtros;
+- quantidade de publicações relevantes;
+- quantidade de publicações com relevância alta;
 - média dos scores;
-- filtros para ANPD, BCB e fontes futuras;
+- filtros para ANPD, BCB, CAMARA e fontes futuras;
 - filtros por nível de relevância;
 - seleção de score mínimo;
-- opção para exibir somente notícias relevantes;
+- opção para exibir somente publicações relevantes;
 - pesquisa textual;
-- cartões de notícias ordenados pelo score;
-- links para as publicações originais.
+- cartões de publicações ordenados pelo score;
+- links para as publicações oficiais originais.
 
 Para encerrar o servidor local do dashboard, retorne ao terminal e
 pressione:
@@ -686,7 +801,7 @@ projeto.
 python -m unittest discover -s tests -v
 ```
 
-Os testes automatizados validam:
+A suíte contém atualmente 14 testes automatizados que validam:
 
 - cálculo do score de relevância;
 - faixas de relevância;
@@ -695,8 +810,13 @@ Os testes automatizados validam:
 - interpretação do feed Atom do BCB;
 - ordenação das notícias do BCB;
 - normalização das URLs do BCB;
-- rejeição de domínios externos;
-- limites de coleta sem requisições desnecessárias.
+- rejeição de domínios externos no coletor do BCB;
+- limites de coleta do BCB sem requisições desnecessárias;
+- ordenação das proposições da Câmara;
+- normalização das proposições da Câmara;
+- remoção de resultados repetidos nas pesquisas da Câmara;
+- limites de coleta da Câmara sem requisições desnecessárias;
+- rejeição de períodos de pesquisa inválidos.
 
 ### Normalização dos dados
 
@@ -741,6 +861,60 @@ www.bcb.gov.br
 Parâmetros de consulta e fragmentos são removidos das URLs antes da
 persistência para melhorar a detecção de duplicidades.
 
+### Estratégia de coleta da Câmara dos Deputados
+
+O coletor da Câmara utiliza a API REST oficial de Dados Abertos:
+
+```text
+https://dadosabertos.camara.leg.br/api/v2/proposicoes
+```
+
+O coletor pesquisa proposições relacionadas aos seguintes temas
+regulatórios:
+
+```text
+inteligência artificial
+algoritmos
+proteção de dados
+dados pessoais
+cibersegurança
+ativos virtuais
+sistema financeiro
+banco central
+```
+
+Atualmente, são considerados estes tipos de proposições:
+
+```text
+PL
+PLP
+PEC
+MPV
+PDL
+```
+
+O período padrão de pesquisa corresponde aos últimos 90 dias. Os
+resultados encontrados em mais de uma pesquisa são deduplicados por
+meio do identificador oficial da proposição.
+
+Todos os resultados válidos são ordenados explicitamente pela data de
+apresentação antes da aplicação do limite final. Isso garante a seleção
+das proposições mais recentes entre todos os temas configurados.
+
+Cada proposição recebe um link para sua página pública oficial de
+tramitação:
+
+```text
+https://www.camara.leg.br/proposicoesWeb/fichadetramitacao
+```
+
+O identificador da proposição permanece na URL para que cada registro
+seja único e abra a página legislativa correta.
+
+A coleta identifica publicações potencialmente regulatórias. Depois
+disso, o analisador de relevância determina se cada proposição possui
+relevância baixa, média ou alta para o projeto.
+
 ### Score de relevância
 
 O modelo inicial de relevância é determinístico e auditável. Ele não
@@ -771,19 +945,20 @@ futura análise com Inteligência Artificial.
 O dashboard do Streamlit consulta o banco SQLite local por meio de um
 repositório dedicado exclusivamente à leitura.
 
-A interface não executa a coleta de notícias nem modifica os scores de
-relevância. A coleta e a análise permanecem como operações separadas.
+A interface não executa a coleta de publicações nem modifica os scores
+de relevância. A coleta e a análise permanecem como operações
+separadas.
 
 Essa separação mantém claras as responsabilidades:
 
 ```text
-Fontes regulatórias
+Fontes regulatórias e legislativas
     ↓
 Coletores das fontes
     ↓
-Normalização das notícias
+Normalização das publicações
     ↓
-Persistência das notícias
+Persistência das publicações
     ↓
 Análise de relevância
     ↓
@@ -809,12 +984,12 @@ gerenciamento das transações.
 
 Atualmente, o banco contém:
 
-- `news_articles`: notícias regulatórias normalizadas de todas as
+- `news_articles`: publicações regulatórias normalizadas de todas as
   fontes;
 - `article_analyses`: scores de relevância e suas evidências.
 
-As URLs das notícias são únicas e impedem registros duplicados. Cada
-notícia possui uma análise atual, que é atualizada quando o script de
+As URLs das publicações são únicas e impedem registros duplicados. Cada
+publicação possui uma análise atual, que é atualizada quando o script de
 pontuação é executado novamente.
 
 O arquivo do banco é local e não é enviado ao Git.
@@ -828,16 +1003,18 @@ O arquivo do banco é local e não é enviado ao Git.
 - [x] Estrutura inicial do projeto
 - [x] Coletor de notícias da ANPD
 - [x] Coletor de notícias do BCB
-- [x] Normalização compartilhada das notícias
+- [x] Coletor de proposições da Câmara dos Deputados
+- [x] Normalização compartilhada das publicações
 - [x] Persistência em banco de dados
 - [x] Prevenção de duplicidades
-- [x] Listagem das notícias armazenadas
+- [x] Listagem das publicações armazenadas
 - [x] Ranking determinístico de relevância
 - [x] Persistência das análises
 - [x] Testes automatizados do score
 - [x] Testes automatizados do coletor do BCB
+- [x] Testes automatizados do coletor da Câmara
 - [x] Dashboard interativo com múltiplas fontes
-- [ ] Outras fontes regulatórias
+- [ ] Outras fontes regulatórias internacionais
 - [ ] Classificação com Inteligência Artificial
 - [ ] Automação diária
 - [ ] Publicação em ambiente de nuvem
@@ -851,4 +1028,5 @@ O arquivo do banco é local e não é enviado ao Git.
 - SQLite
 - Streamlit
 - XML e Atom
+- APIs REST e JSON
 - Git
