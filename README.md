@@ -27,12 +27,18 @@ The project aims to:
 - support future impact analysis with Artificial Intelligence;
 - provide structured data for dashboards and automated reports.
 
+### Current sources
+
+- Brazilian National Data Protection Authority (ANPD)
+- Central Bank of Brazil (BCB)
+
 ### Current capabilities
 
-- Collection of news published by the Brazilian National Data
-  Protection Authority (ANPD)
+- Collection of official ANPD news
+- Collection of official BCB news through its Atom feed
+- Explicit newest-to-oldest article ordering
 - Extraction of article metadata and content
-- Normalization of collected news
+- Normalization through a shared news structure
 - Local persistence with SQLite
 - Database mapping and queries with SQLAlchemy
 - Duplicate prevention based on article URLs
@@ -40,7 +46,7 @@ The project aims to:
 - Keyword and category evidence for every score
 - Ranking from highest to lowest relevance
 - Persistence and updating of article analyses
-- Automated unit tests for the scoring rules
+- Automated tests for scoring and collection rules
 - Interactive Streamlit dashboard
 - Filters by source, relevance level, minimum score, and text
 - Dynamic metrics and ranked regulatory news cards
@@ -48,8 +54,6 @@ The project aims to:
 
 ### Planned sources
 
-- Brazilian National Data Protection Authority (ANPD)
-- Central Bank of Brazil
 - Brazilian Chamber of Deputies
 - European AI Office
 - Financial Stability Board
@@ -78,7 +82,8 @@ regulatory-ai-radar
 ├── scripts
 │   ├── analyze_articles.py
 │   ├── list_articles.py
-│   └── run_anpd.py
+│   ├── run_anpd.py
+│   └── run_bcb.py
 ├── src
 │   └── regulatory_ai_radar
 │       ├── analysis
@@ -86,7 +91,8 @@ regulatory-ai-radar
 │       │   └── relevance.py
 │       ├── collectors
 │       │   ├── __init__.py
-│       │   └── anpd.py
+│       │   ├── anpd.py
+│       │   └── bcb.py
 │       ├── database
 │       │   ├── __init__.py
 │       │   ├── analysis_repository.py
@@ -98,6 +104,7 @@ regulatory-ai-radar
 │       ├── __init__.py
 │       └── entities.py
 ├── tests
+│   ├── test_bcb_collector.py
 │   └── test_relevance.py
 ├── .gitignore
 ├── pyproject.toml
@@ -162,6 +169,23 @@ This script:
 5. skips articles whose URLs already exist;
 6. displays a collection and persistence summary.
 
+#### Collect and store BCB news
+
+```powershell
+python scripts\run_bcb.py
+```
+
+This script:
+
+1. accesses the official BCB Atom feed;
+2. selects the current year automatically;
+3. parses every valid feed entry;
+4. rejects links outside the official BCB domain;
+5. sorts articles explicitly from newest to oldest;
+6. selects up to five recent articles;
+7. stores new articles;
+8. skips articles whose URLs already exist.
+
 #### List stored articles
 
 ```powershell
@@ -179,12 +203,15 @@ python scripts\analyze_articles.py
 
 This script:
 
-1. reads the stored articles;
+1. reads the stored articles from every source;
 2. analyzes their title, summary, and body;
 3. calculates an explainable relevance score;
 4. classifies each article as low, medium, or high relevance;
 5. stores or updates the analysis;
 6. ranks the articles from highest to lowest score.
+
+Run the analysis script again after collecting news from any source so
+that the new articles receive relevance scores.
 
 #### Launch the dashboard
 
@@ -204,7 +231,8 @@ The dashboard provides:
 - number of relevant articles;
 - number of high-relevance articles;
 - average relevance score;
-- filters by source and relevance level;
+- filters for ANPD, BCB, and future sources;
+- filters by relevance level;
 - minimum score selection;
 - relevant-only selection;
 - text search;
@@ -231,7 +259,59 @@ This command checks the project files for syntax and indentation errors.
 python -m unittest discover -s tests -v
 ```
 
-This command validates the deterministic scoring rules.
+The automated tests validate:
+
+- relevance score calculation;
+- relevance thresholds;
+- accent and capitalization normalization;
+- maximum score enforcement;
+- BCB Atom feed parsing;
+- newest-to-oldest BCB ordering;
+- BCB URL normalization;
+- rejection of external domains;
+- collection limits without unnecessary network requests.
+
+### Data normalization
+
+All collectors return the same `NewsItem` structure:
+
+```text
+source
+title
+url
+published_at
+summary
+body
+collected_at
+```
+
+This shared contract allows the database, relevance analyzer, and
+dashboard to process content without depending on the original source.
+
+### BCB collection strategy
+
+The BCB collector uses the institution's official Atom feed:
+
+```text
+https://www.bcb.gov.br/api/feed/sitebcb/sitefeeds/noticias
+```
+
+The current year is sent through the `ano` query parameter.
+
+The feed already provides titles, publication dates, official links,
+and article content. The collector still performs its own descending
+date sort before applying the requested limit. This ensures that it
+always selects the most recent entries even if the feed order changes.
+
+Only links belonging to these domains are accepted:
+
+```text
+bcb.gov.br
+www.bcb.gov.br
+```
+
+Query parameters and URL fragments are removed before persistence to
+improve duplicate detection.
 
 ### Relevance scoring
 
@@ -269,7 +349,11 @@ scores. Collection and analysis remain separate operations.
 This separation keeps the responsibilities clear:
 
 ```text
-Collectors
+Regulatory sources
+    ↓
+Source collectors
+    ↓
+News normalization
     ↓
 News persistence
     ↓
@@ -297,7 +381,7 @@ and transaction management.
 
 The database currently contains:
 
-- `news_articles`: normalized regulatory news;
+- `news_articles`: normalized regulatory news from every source;
 - `article_analyses`: relevance scores and supporting evidence.
 
 Article URLs are unique and prevent duplicate news records. Each article
@@ -313,14 +397,17 @@ The database file is local and is excluded from Git.
 #### Current stage
 
 - [x] Initial project structure
-- [x] First ANPD news collector
+- [x] ANPD news collector
+- [x] BCB news collector
+- [x] Shared news normalization
 - [x] Database persistence
 - [x] Duplicate prevention
 - [x] Stored article listing
 - [x] Deterministic relevance ranking
 - [x] Analysis persistence
 - [x] Automated scoring tests
-- [x] Interactive dashboard
+- [x] Automated BCB collector tests
+- [x] Interactive multi-source dashboard
 - [ ] Additional regulatory sources
 - [ ] Artificial Intelligence classification
 - [ ] Daily automation
@@ -334,6 +421,7 @@ The database file is local and is excluded from Git.
 - SQLAlchemy
 - SQLite
 - Streamlit
+- XML and Atom
 - Git
 
 ---
@@ -364,12 +452,18 @@ O projeto tem como objetivos:
 - fornecer dados estruturados para dashboards e relatórios
   automatizados.
 
+### Fontes atuais
+
+- Agência Nacional de Proteção de Dados (ANPD)
+- Banco Central do Brasil (BCB)
+
 ### Funcionalidades atuais
 
-- Coleta de notícias publicadas pela Agência Nacional de Proteção de
-  Dados (ANPD)
+- Coleta de notícias oficiais da ANPD
+- Coleta de notícias oficiais do BCB por meio de seu feed Atom
+- Ordenação explícita das notícias da mais recente para a mais antiga
 - Extração dos metadados e do conteúdo das notícias
-- Normalização das notícias coletadas
+- Normalização por meio de uma estrutura compartilhada
 - Persistência local com SQLite
 - Mapeamento e consultas ao banco com SQLAlchemy
 - Prevenção de duplicidades por meio das URLs
@@ -377,7 +471,7 @@ O projeto tem como objetivos:
 - Evidências de palavras-chave e categorias para cada score
 - Ranking da maior para a menor relevância
 - Persistência e atualização das análises
-- Testes unitários automatizados para as regras de pontuação
+- Testes automatizados para as regras de score e coleta
 - Dashboard interativo com Streamlit
 - Filtros por fonte, nível de relevância, score mínimo e texto
 - Indicadores dinâmicos e cartões de notícias ranqueadas
@@ -385,8 +479,6 @@ O projeto tem como objetivos:
 
 ### Fontes planejadas
 
-- Agência Nacional de Proteção de Dados (ANPD)
-- Banco Central do Brasil
 - Câmara dos Deputados
 - European AI Office
 - Financial Stability Board
@@ -415,7 +507,8 @@ regulatory-ai-radar
 ├── scripts
 │   ├── analyze_articles.py
 │   ├── list_articles.py
-│   └── run_anpd.py
+│   ├── run_anpd.py
+│   └── run_bcb.py
 ├── src
 │   └── regulatory_ai_radar
 │       ├── analysis
@@ -423,7 +516,8 @@ regulatory-ai-radar
 │       │   └── relevance.py
 │       ├── collectors
 │       │   ├── __init__.py
-│       │   └── anpd.py
+│       │   ├── anpd.py
+│       │   └── bcb.py
 │       ├── database
 │       │   ├── __init__.py
 │       │   ├── analysis_repository.py
@@ -435,6 +529,7 @@ regulatory-ai-radar
 │       ├── __init__.py
 │       └── entities.py
 ├── tests
+│   ├── test_bcb_collector.py
 │   └── test_relevance.py
 ├── .gitignore
 ├── pyproject.toml
@@ -498,6 +593,23 @@ Esse script:
 5. ignora notícias cujas URLs já estejam cadastradas;
 6. apresenta um resumo da coleta e da persistência.
 
+#### Coletar e armazenar notícias do BCB
+
+```powershell
+python scripts\run_bcb.py
+```
+
+Esse script:
+
+1. acessa o feed Atom oficial do BCB;
+2. seleciona automaticamente o ano atual;
+3. interpreta todas as entradas válidas;
+4. rejeita links externos ao domínio oficial;
+5. ordena as notícias da mais recente para a mais antiga;
+6. seleciona até cinco notícias recentes;
+7. armazena as notícias novas;
+8. ignora URLs que já estejam cadastradas.
+
 #### Listar as notícias armazenadas
 
 ```powershell
@@ -515,12 +627,15 @@ python scripts\analyze_articles.py
 
 Esse script:
 
-1. consulta as notícias armazenadas;
+1. consulta as notícias armazenadas de todas as fontes;
 2. analisa o título, o resumo e o corpo;
 3. calcula um score de relevância explicável;
 4. classifica cada notícia como de relevância baixa, média ou alta;
 5. armazena ou atualiza a análise;
 6. ordena as notícias da maior para a menor pontuação.
+
+Execute novamente o script de análise depois de coletar notícias de
+qualquer fonte para que os novos artigos recebam seus scores.
 
 #### Iniciar o dashboard
 
@@ -541,7 +656,8 @@ O dashboard oferece:
 - quantidade de notícias relevantes;
 - quantidade de notícias com relevância alta;
 - média dos scores;
-- filtros por fonte e nível de relevância;
+- filtros para ANPD, BCB e fontes futuras;
+- filtros por nível de relevância;
 - seleção de score mínimo;
 - opção para exibir somente notícias relevantes;
 - pesquisa textual;
@@ -570,7 +686,60 @@ projeto.
 python -m unittest discover -s tests -v
 ```
 
-Esse comando valida as regras determinísticas de pontuação.
+Os testes automatizados validam:
+
+- cálculo do score de relevância;
+- faixas de relevância;
+- normalização de acentos e letras maiúsculas;
+- limite máximo do score;
+- interpretação do feed Atom do BCB;
+- ordenação das notícias do BCB;
+- normalização das URLs do BCB;
+- rejeição de domínios externos;
+- limites de coleta sem requisições desnecessárias.
+
+### Normalização dos dados
+
+Todos os coletores retornam a mesma estrutura `NewsItem`:
+
+```text
+source
+title
+url
+published_at
+summary
+body
+collected_at
+```
+
+Esse contrato compartilhado permite que o banco, o analisador e o
+dashboard processem o conteúdo sem depender da fonte original.
+
+### Estratégia de coleta do BCB
+
+O coletor do BCB utiliza o feed Atom oficial da instituição:
+
+```text
+https://www.bcb.gov.br/api/feed/sitebcb/sitefeeds/noticias
+```
+
+O ano atual é enviado por meio do parâmetro `ano`.
+
+O feed já disponibiliza títulos, datas de publicação, links oficiais e
+conteúdo. Mesmo assim, o coletor realiza sua própria ordenação
+decrescente antes de aplicar o limite solicitado. Isso garante que as
+notícias mais recentes sejam selecionadas mesmo que a ordem do feed
+seja alterada.
+
+Somente links pertencentes aos seguintes domínios são aceitos:
+
+```text
+bcb.gov.br
+www.bcb.gov.br
+```
+
+Parâmetros de consulta e fragmentos são removidos das URLs antes da
+persistência para melhorar a detecção de duplicidades.
 
 ### Score de relevância
 
@@ -608,7 +777,11 @@ relevância. A coleta e a análise permanecem como operações separadas.
 Essa separação mantém claras as responsabilidades:
 
 ```text
-Coletores
+Fontes regulatórias
+    ↓
+Coletores das fontes
+    ↓
+Normalização das notícias
     ↓
 Persistência das notícias
     ↓
@@ -636,7 +809,8 @@ gerenciamento das transações.
 
 Atualmente, o banco contém:
 
-- `news_articles`: notícias regulatórias normalizadas;
+- `news_articles`: notícias regulatórias normalizadas de todas as
+  fontes;
 - `article_analyses`: scores de relevância e suas evidências.
 
 As URLs das notícias são únicas e impedem registros duplicados. Cada
@@ -652,14 +826,17 @@ O arquivo do banco é local e não é enviado ao Git.
 #### Etapa atual
 
 - [x] Estrutura inicial do projeto
-- [x] Primeiro coletor de notícias da ANPD
+- [x] Coletor de notícias da ANPD
+- [x] Coletor de notícias do BCB
+- [x] Normalização compartilhada das notícias
 - [x] Persistência em banco de dados
 - [x] Prevenção de duplicidades
 - [x] Listagem das notícias armazenadas
 - [x] Ranking determinístico de relevância
 - [x] Persistência das análises
 - [x] Testes automatizados do score
-- [x] Dashboard interativo
+- [x] Testes automatizados do coletor do BCB
+- [x] Dashboard interativo com múltiplas fontes
 - [ ] Outras fontes regulatórias
 - [ ] Classificação com Inteligência Artificial
 - [ ] Automação diária
@@ -673,4 +850,5 @@ O arquivo do banco é local e não é enviado ao Git.
 - SQLAlchemy
 - SQLite
 - Streamlit
+- XML e Atom
 - Git
