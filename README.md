@@ -10,10 +10,10 @@ Regulatory AI Radar is a regulatory intelligence project focused on
 Artificial Intelligence, governance, risk, data protection, and
 financial-sector regulation.
 
-The application collects publications from regulatory, financial, and
-legislative sources, stores normalized information, calculates an
-auditable regulatory relevance score, and presents the results in an
-interactive dashboard.
+The application collects publications from regulatory, financial,
+legislative, and international institutional sources, stores normalized
+information, calculates an auditable regulatory relevance score, and
+presents the results in an interactive dashboard.
 
 ### Objective
 
@@ -22,7 +22,8 @@ The project aims to:
 - automate the collection of regulatory news and legislative
   propositions;
 - identify content related to Artificial Intelligence;
-- organize publications from multiple regulatory sources;
+- organize publications from multiple national and international
+  regulatory sources;
 - prevent duplicate records;
 - calculate regulatory relevance scores;
 - support future impact analysis with Artificial Intelligence;
@@ -33,6 +34,7 @@ The project aims to:
 - Brazilian National Data Protection Authority (ANPD)
 - Central Bank of Brazil (BCB)
 - Brazilian Chamber of Deputies
+- European Commission — European AI Office topic
 
 ### Current capabilities
 
@@ -40,9 +42,12 @@ The project aims to:
 - Collection of official BCB news through its Atom feed
 - Collection of legislative propositions through the official Chamber
   of Deputies API
+- Collection of European AI publications from the official European
+  Commission portal
 - Search for legislative propositions by regulatory topics
 - Explicit newest-to-oldest publication ordering
 - Extraction of publication metadata and content
+- Validation and normalization of official URLs
 - Normalization through a shared news structure
 - Local persistence with SQLite
 - Database mapping and queries with SQLAlchemy
@@ -50,16 +55,15 @@ The project aims to:
 - Deterministic regulatory relevance scoring
 - Keyword and category evidence for every score
 - Ranking from highest to lowest relevance
-- Persistence and updating of article analyses
+- Persistence and updating of publication analyses
 - Automated tests for scoring and collection rules
 - Interactive Streamlit dashboard
 - Filters by source, relevance level, minimum score, and text
 - Dynamic metrics and ranked regulatory publication cards
-- Links to the original official publications
+- Links to original official publications
 
 ### Planned sources
 
-- European AI Office
 - Financial Stability Board
 - Bank for International Settlements
 - International Association of Privacy Professionals (IAPP)
@@ -88,7 +92,8 @@ regulatory-ai-radar
 │   ├── list_articles.py
 │   ├── run_anpd.py
 │   ├── run_bcb.py
-│   └── run_camara.py
+│   ├── run_camara.py
+│   └── run_eu_ai_office.py
 ├── src
 │   └── regulatory_ai_radar
 │       ├── analysis
@@ -98,7 +103,8 @@ regulatory-ai-radar
 │       │   ├── __init__.py
 │       │   ├── anpd.py
 │       │   ├── bcb.py
-│       │   └── camara.py
+│       │   ├── camara.py
+│       │   └── eu_ai_office.py
 │       ├── database
 │       │   ├── __init__.py
 │       │   ├── analysis_repository.py
@@ -112,6 +118,7 @@ regulatory-ai-radar
 ├── tests
 │   ├── test_bcb_collector.py
 │   ├── test_camara_collector.py
+│   ├── test_eu_ai_office_collector.py
 │   └── test_relevance.py
 ├── .gitignore
 ├── pyproject.toml
@@ -211,6 +218,26 @@ This script:
 8. stores new propositions;
 9. skips URLs that already exist.
 
+#### Collect and store European AI publications
+
+```powershell
+python scripts\run_eu_ai_office.py
+```
+
+This script:
+
+1. accesses the official European Commission digital strategy portal;
+2. selects the official Artificial Intelligence topic;
+3. identifies publication cards and their dates;
+4. validates that links belong to the official European Commission
+   domain;
+5. removes repeated publication links;
+6. sorts candidates from newest to oldest;
+7. opens the most recent publication pages;
+8. extracts titles, summaries, and article content;
+9. stores new publications;
+10. skips URLs that already exist.
+
 #### List stored publications
 
 ```powershell
@@ -228,12 +255,12 @@ python scripts\analyze_articles.py
 
 This script:
 
-1. reads the stored publications from every source;
+1. reads stored publications from every source;
 2. analyzes their title, summary, and body;
 3. calculates an explainable relevance score;
 4. classifies each publication as low, medium, or high relevance;
 5. stores or updates the analysis;
-6. ranks the publications from highest to lowest score.
+6. ranks publications from highest to lowest score.
 
 Run the analysis script again after collecting publications from any
 source so that the new records receive relevance scores.
@@ -256,7 +283,7 @@ The dashboard provides:
 - number of relevant publications;
 - number of high-relevance publications;
 - average relevance score;
-- filters for ANPD, BCB, CAMARA, and future sources;
+- filters for ANPD, BCB, CAMARA, EU_AI_OFFICE, and future sources;
 - filters by relevance level;
 - minimum score selection;
 - relevant-only selection;
@@ -284,7 +311,7 @@ This command checks the project files for syntax and indentation errors.
 python -m unittest discover -s tests -v
 ```
 
-The automated test suite currently contains 14 tests and validates:
+The automated test suite currently contains 20 tests and validates:
 
 - relevance score calculation;
 - relevance thresholds;
@@ -299,7 +326,13 @@ The automated test suite currently contains 14 tests and validates:
 - Chamber proposition normalization;
 - removal of duplicate Chamber search results;
 - Chamber collection limits without unnecessary network requests;
-- rejection of invalid Chamber search periods.
+- rejection of invalid Chamber search periods;
+- newest-to-oldest European publication ordering;
+- removal of repeated European publication cards;
+- rejection of external European publication URLs;
+- European title, summary, body, and date normalization;
+- European collection limit enforcement;
+- European zero-limit collection without network requests.
 
 ### Data normalization
 
@@ -398,6 +431,59 @@ The collection step identifies potential regulatory publications. The
 relevance analyzer subsequently decides whether each proposition has
 low, medium, or high relevance for the project.
 
+### European AI collection strategy
+
+The European collector uses the official European Commission portal
+Shaping Europe’s Digital Future:
+
+```text
+https://digital-strategy.ec.europa.eu/en/news
+```
+
+The listing is filtered through the official Artificial Intelligence
+topic identifier:
+
+```text
+topic=119
+```
+
+The collector first reads the listing page and extracts:
+
+- publication titles;
+- publication dates;
+- official detail-page links.
+
+Only HTTPS links belonging to this domain are accepted:
+
+```text
+digital-strategy.ec.europa.eu
+```
+
+Links must also use the official English news path:
+
+```text
+/en/news/
+```
+
+Query parameters and fragments are removed before persistence. Repeated
+publication cards are removed through their normalized official URLs.
+
+Candidates are sorted locally from newest to oldest before detail pages
+are requested. The collector then opens only the pages required to
+reach the requested limit.
+
+Each detail page provides:
+
+- the official publication title;
+- a summary;
+- the main paragraphs;
+- relevant list items;
+- the publication date;
+- the original official URL.
+
+This strategy keeps the number of HTTP requests controlled while
+providing enough text for the relevance analyzer.
+
 ### Relevance scoring
 
 The initial relevance model is deterministic and auditable. It does not
@@ -434,7 +520,7 @@ relevance scores. Collection and analysis remain separate operations.
 This separation keeps the responsibilities clear:
 
 ```text
-Regulatory and legislative sources
+Regulatory, legislative, and institutional sources
     ↓
 Source collectors
     ↓
@@ -486,6 +572,7 @@ The database file is local and is excluded from Git.
 - [x] ANPD news collector
 - [x] BCB news collector
 - [x] Chamber of Deputies proposition collector
+- [x] European AI publication collector
 - [x] Shared publication normalization
 - [x] Database persistence
 - [x] Duplicate prevention
@@ -495,6 +582,7 @@ The database file is local and is excluded from Git.
 - [x] Automated scoring tests
 - [x] Automated BCB collector tests
 - [x] Automated Chamber collector tests
+- [x] Automated European AI collector tests
 - [x] Interactive multi-source dashboard
 - [ ] Additional international regulatory sources
 - [ ] Artificial Intelligence classification
@@ -511,6 +599,7 @@ The database file is local and is excluded from Git.
 - Streamlit
 - XML and Atom
 - REST APIs and JSON
+- HTML parsing
 - Git
 
 ---
@@ -523,10 +612,10 @@ O Regulatory AI Radar é um projeto de inteligência regulatória voltado
 ao acompanhamento de Inteligência Artificial, governança, riscos,
 proteção de dados e regulação do setor financeiro.
 
-A aplicação coleta publicações de fontes regulatórias, financeiras e
-legislativas, armazena informações normalizadas, calcula um score
-auditável de relevância regulatória e apresenta os resultados em um
-dashboard interativo.
+A aplicação coleta publicações de fontes regulatórias, financeiras,
+legislativas e institucionais internacionais, armazena informações
+normalizadas, calcula um score auditável de relevância regulatória e
+apresenta os resultados em um dashboard interativo.
 
 ### Objetivo
 
@@ -535,7 +624,8 @@ O projeto tem como objetivos:
 - automatizar a coleta de notícias regulatórias e proposições
   legislativas;
 - identificar conteúdos relacionados à Inteligência Artificial;
-- organizar publicações de diferentes fontes regulatórias;
+- organizar publicações de diferentes fontes regulatórias nacionais e
+  internacionais;
 - impedir o armazenamento de registros duplicados;
 - calcular scores de relevância regulatória;
 - apoiar futuras análises de impacto com Inteligência Artificial;
@@ -547,6 +637,7 @@ O projeto tem como objetivos:
 - Agência Nacional de Proteção de Dados (ANPD)
 - Banco Central do Brasil (BCB)
 - Câmara dos Deputados
+- Comissão Europeia — tópico do European AI Office
 
 ### Funcionalidades atuais
 
@@ -554,9 +645,12 @@ O projeto tem como objetivos:
 - Coleta de notícias oficiais do BCB por meio de seu feed Atom
 - Coleta de proposições legislativas por meio da API oficial da Câmara
   dos Deputados
+- Coleta de publicações europeias sobre IA no portal oficial da Comissão
+  Europeia
 - Pesquisa de proposições legislativas por temas regulatórios
 - Ordenação explícita das publicações da mais recente para a mais antiga
 - Extração dos metadados e do conteúdo das publicações
+- Validação e normalização de URLs oficiais
 - Normalização por meio de uma estrutura compartilhada
 - Persistência local com SQLite
 - Mapeamento e consultas ao banco com SQLAlchemy
@@ -573,7 +667,6 @@ O projeto tem como objetivos:
 
 ### Fontes planejadas
 
-- European AI Office
 - Financial Stability Board
 - Bank for International Settlements
 - International Association of Privacy Professionals (IAPP)
@@ -602,7 +695,8 @@ regulatory-ai-radar
 │   ├── list_articles.py
 │   ├── run_anpd.py
 │   ├── run_bcb.py
-│   └── run_camara.py
+│   ├── run_camara.py
+│   └── run_eu_ai_office.py
 ├── src
 │   └── regulatory_ai_radar
 │       ├── analysis
@@ -612,7 +706,8 @@ regulatory-ai-radar
 │       │   ├── __init__.py
 │       │   ├── anpd.py
 │       │   ├── bcb.py
-│       │   └── camara.py
+│       │   ├── camara.py
+│       │   └── eu_ai_office.py
 │       ├── database
 │       │   ├── __init__.py
 │       │   ├── analysis_repository.py
@@ -626,6 +721,7 @@ regulatory-ai-radar
 ├── tests
 │   ├── test_bcb_collector.py
 │   ├── test_camara_collector.py
+│   ├── test_eu_ai_office_collector.py
 │   └── test_relevance.py
 ├── .gitignore
 ├── pyproject.toml
@@ -719,11 +815,30 @@ Esse script:
 3. limita a pesquisa aos tipos de proposições legislativas selecionados;
 4. pesquisa proposições apresentadas nos últimos 90 dias;
 5. remove proposições encontradas por mais de uma pesquisa;
-6. ordena todos os resultados válidos da data mais recente para a mais
-   antiga;
+6. ordena os resultados da data mais recente para a mais antiga;
 7. seleciona até cinco proposições recentes;
 8. armazena as novas proposições;
 9. ignora URLs que já estejam cadastradas.
+
+#### Coletar e armazenar publicações europeias sobre IA
+
+```powershell
+python scripts\run_eu_ai_office.py
+```
+
+Esse script:
+
+1. acessa o portal oficial de estratégia digital da Comissão Europeia;
+2. seleciona o tópico oficial de Inteligência Artificial;
+3. identifica os cartões das publicações e suas datas;
+4. valida se os links pertencem ao domínio oficial da Comissão
+   Europeia;
+5. remove links repetidos;
+6. ordena os candidatos da data mais recente para a mais antiga;
+7. abre as páginas das publicações mais recentes;
+8. extrai títulos, resumos e conteúdo;
+9. armazena as publicações novas;
+10. ignora URLs que já estejam cadastradas.
 
 #### Listar as publicações armazenadas
 
@@ -771,7 +886,7 @@ O dashboard oferece:
 - quantidade de publicações relevantes;
 - quantidade de publicações com relevância alta;
 - média dos scores;
-- filtros para ANPD, BCB, CAMARA e fontes futuras;
+- filtros para ANPD, BCB, CAMARA, EU_AI_OFFICE e fontes futuras;
 - filtros por nível de relevância;
 - seleção de score mínimo;
 - opção para exibir somente publicações relevantes;
@@ -801,7 +916,7 @@ projeto.
 python -m unittest discover -s tests -v
 ```
 
-A suíte contém atualmente 14 testes automatizados que validam:
+A suíte contém atualmente 20 testes automatizados que validam:
 
 - cálculo do score de relevância;
 - faixas de relevância;
@@ -816,7 +931,13 @@ A suíte contém atualmente 14 testes automatizados que validam:
 - normalização das proposições da Câmara;
 - remoção de resultados repetidos nas pesquisas da Câmara;
 - limites de coleta da Câmara sem requisições desnecessárias;
-- rejeição de períodos de pesquisa inválidos.
+- rejeição de períodos de pesquisa inválidos;
+- ordenação das publicações europeias;
+- remoção de cartões europeus repetidos;
+- rejeição de URLs europeias externas;
+- normalização de título, resumo, corpo e data;
+- respeito ao limite de coleta europeu;
+- ausência de requisições europeias quando o limite é zero.
 
 ### Normalização dos dados
 
@@ -894,12 +1015,12 @@ PDL
 ```
 
 O período padrão de pesquisa corresponde aos últimos 90 dias. Os
-resultados encontrados em mais de uma pesquisa são deduplicados por
-meio do identificador oficial da proposição.
+resultados encontrados em mais de uma pesquisa são deduplicados pelo
+identificador oficial da proposição.
 
-Todos os resultados válidos são ordenados explicitamente pela data de
-apresentação antes da aplicação do limite final. Isso garante a seleção
-das proposições mais recentes entre todos os temas configurados.
+Todos os resultados válidos são ordenados pela data de apresentação
+antes da aplicação do limite final. Isso garante a seleção das
+proposições mais recentes entre todos os temas configurados.
 
 Cada proposição recebe um link para sua página pública oficial de
 tramitação:
@@ -912,8 +1033,62 @@ O identificador da proposição permanece na URL para que cada registro
 seja único e abra a página legislativa correta.
 
 A coleta identifica publicações potencialmente regulatórias. Depois
-disso, o analisador de relevância determina se cada proposição possui
-relevância baixa, média ou alta para o projeto.
+disso, o analisador determina se cada proposição possui relevância
+baixa, média ou alta para o projeto.
+
+### Estratégia de coleta europeia sobre IA
+
+O coletor europeu utiliza o portal oficial Shaping Europe’s Digital
+Future, mantido pela Comissão Europeia:
+
+```text
+https://digital-strategy.ec.europa.eu/en/news
+```
+
+A listagem utiliza o identificador oficial do tópico de Inteligência
+Artificial:
+
+```text
+topic=119
+```
+
+Primeiro, o coletor lê a listagem e extrai:
+
+- títulos das publicações;
+- datas de publicação;
+- links oficiais das páginas de detalhes.
+
+Somente links HTTPS pertencentes a este domínio são aceitos:
+
+```text
+digital-strategy.ec.europa.eu
+```
+
+Os links também devem utilizar o caminho oficial em inglês:
+
+```text
+/en/news/
+```
+
+Parâmetros de consulta e fragmentos são removidos antes da persistência.
+Cartões repetidos são removidos por meio das URLs oficiais
+normalizadas.
+
+Os candidatos são ordenados localmente da data mais recente para a mais
+antiga antes da abertura das páginas de detalhes. O coletor abre somente
+as páginas necessárias para alcançar o limite solicitado.
+
+Cada página de detalhes fornece:
+
+- título oficial;
+- resumo;
+- principais parágrafos;
+- itens relevantes de listas;
+- data de publicação;
+- URL oficial original.
+
+Essa estratégia controla a quantidade de requisições e, ao mesmo tempo,
+fornece texto suficiente para o analisador de relevância.
 
 ### Score de relevância
 
@@ -952,7 +1127,7 @@ separadas.
 Essa separação mantém claras as responsabilidades:
 
 ```text
-Fontes regulatórias e legislativas
+Fontes regulatórias, legislativas e institucionais
     ↓
 Coletores das fontes
     ↓
@@ -1004,6 +1179,7 @@ O arquivo do banco é local e não é enviado ao Git.
 - [x] Coletor de notícias da ANPD
 - [x] Coletor de notícias do BCB
 - [x] Coletor de proposições da Câmara dos Deputados
+- [x] Coletor de publicações europeias sobre IA
 - [x] Normalização compartilhada das publicações
 - [x] Persistência em banco de dados
 - [x] Prevenção de duplicidades
@@ -1013,6 +1189,7 @@ O arquivo do banco é local e não é enviado ao Git.
 - [x] Testes automatizados do score
 - [x] Testes automatizados do coletor do BCB
 - [x] Testes automatizados do coletor da Câmara
+- [x] Testes automatizados do coletor europeu
 - [x] Dashboard interativo com múltiplas fontes
 - [ ] Outras fontes regulatórias internacionais
 - [ ] Classificação com Inteligência Artificial
@@ -1029,4 +1206,5 @@ O arquivo do banco é local e não é enviado ao Git.
 - Streamlit
 - XML e Atom
 - APIs REST e JSON
+- Interpretação de HTML
 - Git
