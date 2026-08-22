@@ -15,8 +15,8 @@ class TestesClassificadorLocal(unittest.TestCase):
 
     def test_fronteiras_das_cinco_faixas(self) -> None:
         casos = (
-            (0, 1), (14, 1), (15, 2), (29, 2), (30, 3),
-            (44, 3), (45, 4), (59, 4), (60, 5), (100, 5),
+            (0, 1), (19, 1), (20, 2), (39, 2), (40, 3),
+            (59, 3), (60, 4), (79, 4), (80, 5), (100, 5),
         )
 
         for pontuacao, estrelas_esperadas in casos:
@@ -40,7 +40,7 @@ class TestesClassificadorLocal(unittest.TestCase):
             categorias=("inteligência artificial",),
         )
 
-        self.assertEqual(resultado.avaliacao_estrelas, 4)
+        self.assertEqual(resultado.avaliacao_estrelas, 3)
         self.assertIn("45/100", resultado.justificativa)
         self.assertIn("2 palavra(s)-chave", resultado.justificativa)
         self.assertEqual(

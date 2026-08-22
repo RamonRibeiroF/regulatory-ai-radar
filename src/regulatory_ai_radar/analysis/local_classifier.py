@@ -53,19 +53,19 @@ class ClassificadorLocalDeterministico:
     """Converte a análise determinística existente em cinco estrelas."""
 
     nome_modelo = "classificador-local-deterministico"
-    versao_criterios = "1.0"
+    versao_criterios = "1.1"
 
     @staticmethod
     def _converter_pontuacao_em_estrelas(pontuacao: int) -> int:
-        """Aplica faixas derivadas dos limites 30 e 60 do analisador."""
+        """Aplica faixas proporcionais de 20 pontos, iguais à escala de impacto."""
 
-        if pontuacao < 15:
+        if pontuacao < 20:
             return 1
-        if pontuacao < 30:
+        if pontuacao < 40:
             return 2
-        if pontuacao < 45:
-            return 3
         if pontuacao < 60:
+            return 3
+        if pontuacao < 80:
             return 4
         return 5
 
@@ -84,11 +84,11 @@ class ClassificadorLocalDeterministico:
 
         estrelas = self._converter_pontuacao_em_estrelas(pontuacao)
         faixas = {
-            1: "0–14",
-            2: "15–29",
-            3: "30–44",
-            4: "45–59",
-            5: "60–100",
+            1: "0–19",
+            2: "20–39",
+            3: "40–59",
+            4: "60–79",
+            5: "80–100",
         }
 
         # Passo 4: registra os elementos objetivos que sustentam o resultado.

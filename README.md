@@ -58,11 +58,11 @@ categories. The local star classifier converts the score using fixed ranges:
 
 | Score | Stars |
 | --- | --- |
-| 0–14 | 1 |
-| 15–29 | 2 |
-| 30–44 | 3 |
-| 45–59 | 4 |
-| 60–100 | 5 |
+| 0–19 | 1 |
+| 20–39 | 2 |
+| 40–59 | 3 |
+| 60–79 | 4 |
+| 80–100 | 5 |
 
 ### Regulatory impact
 
@@ -203,11 +203,11 @@ categorias identificadas. A classificação local converte o score em estrelas:
 
 | Score | Estrelas |
 | --- | --- |
-| 0–14 | 1 |
-| 15–29 | 2 |
-| 30–44 | 3 |
-| 45–59 | 4 |
-| 60–100 | 5 |
+| 0–19 | 1 |
+| 20–39 | 2 |
+| 40–59 | 3 |
+| 60–79 | 4 |
+| 80–100 | 5 |
 
 ### Impacto regulatório
 

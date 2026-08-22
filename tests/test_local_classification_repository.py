@@ -56,8 +56,8 @@ class TestesRepositorioClassificacaoLocal(unittest.TestCase):
 
         self.assertTrue(criado)
         self.assertFalse(criado_novamente)
-        self.assertEqual(primeiro.avaliacao_estrelas, 3)
-        self.assertEqual(segundo.avaliacao_estrelas, 5)
+        self.assertEqual(primeiro.avaliacao_estrelas, 2)
+        self.assertEqual(segundo.avaliacao_estrelas, 4)
         self.assertEqual(self.repositorio.contar(), 1)
 
 
