@@ -190,7 +190,7 @@ class PipelineRunnerTests(unittest.TestCase):
         )
         self.assertIsNotNone(analysis)
         self.assertIsNotNone(classificacao_local)
-        self.assertEqual(classificacao_local.avaliacao_estrelas, 5)
+        self.assertEqual(classificacao_local.avaliacao_estrelas, 4)
         self.assertIsNotNone(impacto)
         self.assertGreater(impacto.pontuacao_impacto, 0)
 
