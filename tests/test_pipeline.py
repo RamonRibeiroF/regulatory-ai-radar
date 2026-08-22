@@ -19,6 +19,7 @@ from regulatory_ai_radar.pipeline import (
     CollectorDefinition,
     PipelineRunner,
 )
+from regulatory_ai_radar.pipeline.runner import DEFAULT_COLLECTORS
 
 
 class PipelineRunnerTests(unittest.TestCase):
@@ -52,6 +53,24 @@ class PipelineRunnerTests(unittest.TestCase):
             bind=self.engine,
         )
         self.engine.dispose()
+
+    def test_default_pipeline_contains_ten_expected_sources(self) -> None:
+        # Passo 5: fixar as dez fontes oficiais do produto.
+        self.assertEqual(
+            [collector.source for collector in DEFAULT_COLLECTORS],
+            [
+                "ANPD",
+                "BCB",
+                "CAMARA",
+                "EU_AI_OFFICE",
+                "FSB",
+                "BIS",
+                "IAPP",
+                "OECD_AI",
+                "EBA",
+                "FCA_AI_LAB",
+            ],
+        )
 
     @staticmethod
     def make_news_item(

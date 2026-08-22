@@ -4,11 +4,12 @@ A local regulatory-intelligence pipeline that collects recent official
 publications, removes duplicates, ranks relevance, estimates regulatory impact,
 and presents the results in an interactive dashboard.
 
-The project is deterministic, auditable, and does not require paid APIs.
+The project is deterministic, auditable, and does not require paid APIs. Its
+classifications are rule-based and do not train or claim to be an AI model.
 
 ## What it delivers
 
-- eight official Brazilian and international sources;
+- ten official Brazilian and international sources;
 - collection of the latest publications from each source;
 - local SQLite persistence and URL-based duplicate prevention;
 - deterministic relevance score and one-to-five-star classification;
@@ -30,6 +31,8 @@ The project is deterministic, auditable, and does not require paid APIs.
 | `BIS` | BIS Innovation Hub |
 | `IAPP` | International Association of Privacy Professionals |
 | `OECD_AI` | OECD.AI |
+| `EBA` | European Banking Authority — Digital Finance |
+| `FCA_AI_LAB` | Financial Conduct Authority — AI Lab |
 
 ## Processing flow
 
@@ -126,7 +129,7 @@ impact, pipeline executions, and per-source execution details.
 
 ## Current status
 
-- [x] Eight official collectors
+- [x] Ten official collectors
 - [x] Shared normalization and SQLite persistence
 - [x] Duplicate prevention
 - [x] Deterministic relevance ranking and local stars
@@ -145,11 +148,13 @@ Pipeline local de inteligência regulatória que coleta publicações oficiais
 recentes, remove duplicidades, ordena por relevância, estima o impacto
 regulatório e apresenta os resultados em um dashboard interativo.
 
-O projeto é determinístico, auditável e não depende de APIs pagas.
+O projeto é determinístico, auditável e não depende de APIs pagas. Suas
+classificações são baseadas em regras e não treinam nem alegam ser um modelo de
+IA.
 
 ## Entregas
 
-- oito fontes oficiais brasileiras e internacionais;
+- dez fontes oficiais brasileiras e internacionais;
 - coleta das publicações mais recentes de cada fonte;
 - persistência local em SQLite e prevenção de duplicidades por URL;
 - score determinístico de relevância e classificação de uma a cinco estrelas;
@@ -171,6 +176,8 @@ O projeto é determinístico, auditável e não depende de APIs pagas.
 | `BIS` | BIS Innovation Hub |
 | `IAPP` | International Association of Privacy Professionals |
 | `OECD_AI` | OECD.AI |
+| `EBA` | European Banking Authority — Digital Finance |
+| `FCA_AI_LAB` | Financial Conduct Authority — AI Lab |
 
 ## Fluxo
 
@@ -268,7 +275,7 @@ locais, impacto regulatório e execuções do pipeline por fonte.
 
 ## Situação atual
 
-- [x] Oito coletores oficiais
+- [x] Dez coletores oficiais
 - [x] Normalização compartilhada e persistência SQLite
 - [x] Prevenção de duplicidades
 - [x] Ranking determinístico de relevância e estrelas locais

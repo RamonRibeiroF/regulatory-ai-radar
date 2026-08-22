@@ -21,6 +21,8 @@ from regulatory_ai_radar.collectors.camara import CamaraCollector
 from regulatory_ai_radar.collectors.eu_ai_office import (
     EUAIOfficeCollector,
 )
+from regulatory_ai_radar.collectors.eba import EBACollector
+from regulatory_ai_radar.collectors.fca_ai_lab import FCAAiLabCollector
 from regulatory_ai_radar.collectors.fsb import FSBCollector
 from regulatory_ai_radar.collectors.iapp import IAPPCollector
 from regulatory_ai_radar.collectors.oecd_ai import OECDAICollector
@@ -118,6 +120,18 @@ DEFAULT_COLLECTORS: tuple[CollectorDefinition, ...] = (
     CollectorDefinition(
         source="OECD_AI",
         collect=lambda limit: OECDAICollector().collect(
+            limit=limit,
+        ),
+    ),
+    CollectorDefinition(
+        source="EBA",
+        collect=lambda limit: EBACollector().collect(
+            limit=limit,
+        ),
+    ),
+    CollectorDefinition(
+        source="FCA_AI_LAB",
+        collect=lambda limit: FCAAiLabCollector().collect(
             limit=limit,
         ),
     ),
