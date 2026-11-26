@@ -1,5 +1,9 @@
 # Regulatory AI Radar
 
+[![tests](https://github.com/RamonRibeiroF/regulatory-ai-radar/actions/workflows/tests.yml/badge.svg)](https://github.com/RamonRibeiroF/regulatory-ai-radar/actions/workflows/tests.yml)
+![Python 3.12](https://img.shields.io/badge/python-3.12-blue)
+[![License: MIT](https://img.shields.io/badge/license-MIT-green)](LICENSE)
+
 A local regulatory-intelligence pipeline that collects recent official
 publications, removes duplicates, ranks relevance, estimates regulatory impact,
 and presents the results in an interactive dashboard.
@@ -285,3 +289,7 @@ locais, impacto regulatório e execuções do pipeline por fonte.
 - [x] Dashboard interativo com múltiplas fontes
 - [x] Execução diária oculta no Windows
 - [x] Testes automatizados
+
+## Licença / License
+
+MIT. Veja [LICENSE](LICENSE). / MIT. See [LICENSE](LICENSE).
